@@ -1,0 +1,1 @@
+web: gunicorn 'citadel.wsgi'
