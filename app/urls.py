@@ -73,6 +73,12 @@ from .views import(
     disconnect_wallet,
     get_wallet_detail,
     get_available_wallet_types,
+
+
+    # KYC
+    submit_kyc,
+    get_kyc_status,
+    get_kyc_details,
 )
 
 urlpatterns = [
@@ -165,6 +171,11 @@ urlpatterns = [
     path("wallets/connect/", connect_wallet, name="connect-wallet"),
     path("wallets/<str:wallet_type>/", get_wallet_detail, name="wallet-detail"),
     path("wallets/<str:wallet_type>/disconnect/", disconnect_wallet, name="disconnect-wallet"),
+
+    # KYC endpoints
+    path("submit-kyc/", submit_kyc, name="submit-kyc"),
+    path("kyc/status/", get_kyc_status, name="kyc-status"),
+    path("kyc/details/", get_kyc_details, name="kyc-details"),
 
 ]
 

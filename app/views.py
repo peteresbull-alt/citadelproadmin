@@ -2434,10 +2434,245 @@ def get_available_wallet_types(request):
 
 
 
+# --------------------------- KYC -----------------------------------------------------------------
+# app/views.py file
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+@parser_classes([MultiPartParser, FormParser])
+def submit_kyc(request):
+    """
+    POST: Submit KYC information
+    Expects:
+    - dob: Date of birth (YYYY-MM-DD)
+    - phone: Phone number
+    - address: Street address
+    - postal_code: Postal/ZIP code
+    - city: City
+    - region: Region/State
+    - id_type: Type of ID (passport, driver_license, national_id, voter_card)
+    - id_front: Front image of ID (file)
+    - id_back: Back image of ID (file)
+    """
+    user = request.user
+    
+    # Check if user has already submitted KYC
+    if user.has_submitted_kyc:
+        return Response(
+            {
+                "success": False,
+                "error": "You have already submitted your KYC documents. They are under review."
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Extract data from request
+    dob = request.data.get("dob")
+    phone = request.data.get("phone")
+    address = request.data.get("address")
+    postal_code = request.data.get("postal_code")
+    city = request.data.get("city")
+    region = request.data.get("region")
+    id_type = request.data.get("id_type")
+    
+    # Get file uploads
+    id_front = request.FILES.get("id_front")
+    id_back = request.FILES.get("id_back")
+    
+    # Validation
+    if not all([dob, phone, address, postal_code, city, region, id_type]):
+        return Response(
+            {
+                "success": False,
+                "error": "All fields are required"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    if not id_front or not id_back:
+        return Response(
+            {
+                "success": False,
+                "error": "Both front and back ID images are required"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate ID type
+    valid_id_types = ["passport", "driver_license", "national_id", "voter_card"]
+    if id_type not in valid_id_types:
+        return Response(
+            {
+                "success": False,
+                "error": "Invalid ID type selected"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate date of birth format
+    try:
+        from datetime import datetime
+        dob_date = datetime.strptime(dob, "%Y-%m-%d").date()
+        
+        # Check if user is at least 18 years old
+        from datetime import date
+        today = date.today()
+        age = today.year - dob_date.year - ((today.month, today.day) < (dob_date.month, dob_date.day))
+        
+        if age < 18:
+            return Response(
+                {
+                    "success": False,
+                    "error": "You must be at least 18 years old to use this service"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    except ValueError:
+        return Response(
+            {
+                "success": False,
+                "error": "Invalid date format. Use YYYY-MM-DD"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate phone number (basic validation)
+    if len(phone) < 10:
+        return Response(
+            {
+                "success": False,
+                "error": "Please enter a valid phone number"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Update user profile with KYC information
+    try:
+        user.dob = dob_date
+        user.phone = phone
+        user.address = address
+        user.postal_code = postal_code
+        user.city = city
+        user.region = region
+        user.id_type = id_type
+        user.id_front = id_front
+        user.id_back = id_back
+        user.has_submitted_kyc = True
+        user.save()
+        
+        # Create a notification for KYC submission
+        Notification.objects.create(
+            user=user,
+            type="system",
+            title="KYC Submitted Successfully",
+            message="Your KYC documents have been submitted and are under review.",
+            full_details="We will notify you once your documents have been verified. This typically takes 1-3 business days.",
+            priority="medium"
+        )
+        
+        return Response(
+            {
+                "success": True,
+                "message": "KYC submitted successfully",
+                "data": {
+                    "dob": str(user.dob),
+                    "phone": user.phone,
+                    "address": user.address,
+                    "city": user.city,
+                    "region": user.region,
+                    "postal_code": user.postal_code,
+                    "id_type": user.id_type,
+                    "has_submitted_kyc": user.has_submitted_kyc,
+                    "is_verified": user.is_verified,
+                }
+            },
+            status=status.HTTP_201_CREATED
+        )
+    
+    except Exception as e:
+        return Response(
+            {
+                "success": False,
+                "error": f"Failed to submit KYC: {str(e)}"
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def get_kyc_status(request):
+    """
+    GET: Check KYC status for authenticated user
+    Returns: Current KYC submission status and verification status
+    """
+    user = request.user
+    
+    return Response(
+        {
+            "success": True,
+            "kyc_status": {
+                "has_submitted_kyc": user.has_submitted_kyc,
+                "is_verified": user.is_verified,
+                "status": "verified" if user.is_verified else ("pending" if user.has_submitted_kyc else "not_submitted"),
+                "id_type": user.id_type if user.has_submitted_kyc else None,
+                "submitted_date": user.date_joined.isoformat() if user.has_submitted_kyc else None,
+            }
+        },
+        status=status.HTTP_200_OK
+    )
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def get_kyc_details(request):
+    """
+    GET: Get KYC details for authenticated user
+    Returns: All KYC information (except sensitive ID images)
+    """
+    user = request.user
+    
+    if not user.has_submitted_kyc:
+        return Response(
+            {
+                "success": False,
+                "error": "No KYC submission found"
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    return Response(
+        {
+            "success": True,
+            "kyc_details": {
+                "personal_info": {
+                    "first_name": user.first_name or "",
+                    "last_name": user.last_name or "",
+                    "email": user.email,
+                    "dob": str(user.dob) if user.dob else None,
+                    "phone": user.phone or "",
+                },
+                "address_info": {
+                    "address": user.address or "",
+                    "city": user.city or "",
+                    "region": user.region or "",
+                    "postal_code": user.postal_code or "",
+                    "country": user.country or "",
+                },
+                "verification_info": {
+                    "id_type": user.id_type or "",
+                    "has_id_front": bool(user.id_front),
+                    "has_id_back": bool(user.id_back),
+                    "is_verified": user.is_verified,
+                    "has_submitted_kyc": user.has_submitted_kyc,
+                }
+            }
+        },
+        status=status.HTTP_200_OK
+    )
 
 
 

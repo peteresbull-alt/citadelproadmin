@@ -65,6 +65,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ],
         help_text="Select the type of ID provided",
     )
+    
     id_front = CloudinaryField("image", blank=True, null=True, help_text="Front side of ID document")
     id_back = CloudinaryField("image", blank=True, null=True, help_text="Back side of ID document")
     is_verified = models.BooleanField(default=False)
