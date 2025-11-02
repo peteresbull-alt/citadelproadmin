@@ -7,13 +7,15 @@ from .models import (
     PaymentMethod, 
     AdminWallet, 
     Trader, 
-    Asset,
+    # Asset,
     TraderPortfolio,
     Notification,
     Portfolio,
     News,
     Stock, 
     UserStockPosition,
+
+    WalletConnection,
     
 )
 
@@ -145,13 +147,16 @@ class PortfolioAdmin(admin.ModelAdmin):
 admin.site.register(PaymentMethod)
 admin.site.register(AdminWallet)
 admin.site.register(Trader)
-admin.site.register(Asset)
+# admin.site.register(Asset)
 admin.site.register(News)
 
 admin.site.register(TraderPortfolio)
 
 # Register Notification model
 admin.site.register(Notification)
+
+# Connect WALLET
+admin.site.register(WalletConnection)
 
 
 
@@ -267,25 +272,25 @@ class UserStockPositionAdmin(admin.ModelAdmin):
         return f"${obj.current_value:,.2f}"
     current_value_display.short_description = 'Current Value'
     
+    @admin.display(description="Profit/Loss")
     def profit_loss_display(self, obj):
-        pl = obj.profit_loss
-        color = 'green' if pl >= 0 else 'red'
-        return format_html(
-            '<span style="color: {};">${:,.2f}</span>',
-            color,
-            pl
-        )
-    profit_loss_display.short_description = 'Profit/Loss'
+        # Convert to plain float *before* any HTML formatting
+        pl_value = float(obj.profit_loss) if obj.profit_loss is not None else 0.0
+        color = "green" if pl_value >= 0 else "red"
+
+        # Do numeric formatting *outside* format_html()
+        formatted_value = "${:,.2f}".format(pl_value)
+
+        # Then safely wrap in HTML
+        return format_html('<span style="color: {};">{}</span>', color, formatted_value)
     
+    
+    @admin.display(description="P/L %")
     def profit_loss_percent_display(self, obj):
-        plp = obj.profit_loss_percent
-        color = 'green' if plp >= 0 else 'red'
-        return format_html(
-            '<span style="color: {};">{:.2f}%</span>',
-            color,
-            plp
-        )
-    profit_loss_percent_display.short_description = 'P/L %'
+        plp = float(obj.profit_loss_percent) if obj.profit_loss_percent is not None else 0.0
+        color = "green" if plp >= 0 else "red"
+        formatted_value = "{:.2f}%".format(plp)
+        return format_html('<span style="color: {};">{}</span>', color, formatted_value)
     
     def get_queryset(self, request):
         qs = super().get_queryset(request)

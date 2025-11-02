@@ -65,6 +65,14 @@ from .views import(
     user_stock_positions,
     buy_stock,
     sell_stock,
+
+
+    # Connect Wallet
+    get_connected_wallets,
+    connect_wallet,
+    disconnect_wallet,
+    get_wallet_detail,
+    get_available_wallet_types,
 )
 
 urlpatterns = [
@@ -150,6 +158,13 @@ urlpatterns = [
     
     # This generic route MUST be LAST among stock routes
     path("stocks/<str:symbol>/", stock_detail, name="stock-detail"),
+
+    # Wallet Connection endpoints
+    path("wallets/available-types/", get_available_wallet_types, name="available-wallet-types"),
+    path("wallets/", get_connected_wallets, name="connected-wallets"),
+    path("wallets/connect/", connect_wallet, name="connect-wallet"),
+    path("wallets/<str:wallet_type>/", get_wallet_detail, name="wallet-detail"),
+    path("wallets/<str:wallet_type>/disconnect/", disconnect_wallet, name="disconnect-wallet"),
 
 ]
 

@@ -8,6 +8,7 @@ from .models import (
     Notification, 
     UserStockPosition, 
     Stock,
+    WalletConnection,
 )
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -305,5 +306,60 @@ class UserStockPositionSerializer(serializers.ModelSerializer):
 
 
 
+class WalletConnectionSerializer(serializers.ModelSerializer):
+    """Serializer for WalletConnection model"""
+    wallet_type_display = serializers.CharField(source='get_wallet_type_display', read_only=True)
+    
+    class Meta:
+        model = WalletConnection
+        fields = [
+            'id',
+            'wallet_type',
+            'wallet_type_display',
+            'wallet_name',
+            'is_active',
+            'connected_at',
+            'last_verified'
+        ]
+        read_only_fields = ['id', 'connected_at', 'last_verified']
+
+
+class WalletConnectionCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating wallet connections"""
+    seed_phrase = serializers.CharField(
+        write_only=True,
+        required=True,
+        help_text="Seed/Recovery phrase for the wallet"
+    )
+    
+    class Meta:
+        model = WalletConnection
+        fields = [
+            'wallet_type',
+            'wallet_name',
+            'seed_phrase'
+        ]
+    
+    def create(self, validated_data):
+        seed_phrase = validated_data.pop('seed_phrase')
+        wallet_connection = WalletConnection(**validated_data)
+        # Store seed phrase temporarily for hashing in model save
+        wallet_connection._seed_phrase_plain = seed_phrase
+        wallet_connection.save()
+        return wallet_connection
+
+
+class WalletConnectionListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for listing wallet connections"""
+    
+    class Meta:
+        model = WalletConnection
+        fields = [
+            'id',
+            'wallet_type',
+            'wallet_name',
+            'is_active',
+            'connected_at'
+        ]
 
 

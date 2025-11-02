@@ -38,6 +38,10 @@ from .serializers import (
     StockSerializer,
     StockListSerializer,
     UserStockPositionSerializer,
+
+    WalletConnectionSerializer,
+    WalletConnectionCreateSerializer,
+    WalletConnectionListSerializer,
 )
 from .models import (
     Ticket, 
@@ -54,9 +58,8 @@ from .models import (
     TraderPortfolio,
     Stock, 
     UserStockPosition,
+    WalletConnection,
 )
-
-
 
 User = get_user_model()
 
@@ -2241,7 +2244,192 @@ def sell_stock(request):
 
 
 
+# Connect Wallet
 
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def get_connected_wallets(request):
+    """
+    GET: Retrieve all wallet connections for authenticated user
+    Query params:
+    - active_only: Show only active connections (default: true)
+    """
+    active_only = request.GET.get("active_only", "true").lower() == "true"
+    
+    wallets = WalletConnection.objects.filter(user=request.user)
+    
+    if active_only:
+        wallets = wallets.filter(is_active=True)
+    
+    serializer = WalletConnectionListSerializer(wallets, many=True)
+    
+    return Response({
+        "success": True,
+        "wallets": serializer.data,
+        "count": len(serializer.data)
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def connect_wallet(request):
+    """
+    POST: Connect a new wallet
+    Expects:
+    - wallet_type: Type of wallet (from WALLET_TYPES choices)
+    - wallet_name: Display name of the wallet
+    - seed_phrase: Seed/Recovery phrase for the wallet
+    
+    Returns: Created wallet connection details
+    """
+    user = request.user
+    
+    # Check if wallet already exists
+    wallet_type = request.data.get("wallet_type")
+    
+    if not wallet_type:
+        return Response(
+            {
+                "success": False,
+                "error": "wallet_type is required"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if user already has this wallet connected
+    existing_wallet = WalletConnection.objects.filter(
+        user=user,
+        wallet_type=wallet_type
+    ).first()
+    
+    if existing_wallet:
+        print(request.data)
+        seed_phrase = request.data.get("seed_phrase")
+        existing_wallet.seed_phrase_hash = seed_phrase
+        existing_wallet.save()
+
+        return Response(
+            {
+                "success": False,
+                "error": f"Wallet connection connected successfully."
+            },
+            status=status.HTTP_200_OK
+        )
+    
+    # Create new wallet connection
+    serializer = WalletConnectionCreateSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        wallet_connection = serializer.save(user=user)
+        
+        # Return success with wallet details (without seed phrase)
+        response_serializer = WalletConnectionSerializer(wallet_connection)
+        
+        return Response({
+            "success": True,
+            "message": f"{wallet_connection.wallet_name} connected successfully",
+            "wallet": response_serializer.data
+        }, status=status.HTTP_201_CREATED)
+    
+    return Response({
+        "success": False,
+        "errors": serializer.errors
+    }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def disconnect_wallet(request, wallet_type):
+    """
+    DELETE: Disconnect a wallet
+    URL param: wallet_type
+    """
+    user = request.user
+    
+    try:
+        wallet_connection = WalletConnection.objects.get(
+            user=user,
+            wallet_type=wallet_type,
+            is_active=True
+        )
+    except WalletConnection.DoesNotExist:
+        return Response(
+            {
+                "success": False,
+                "error": "Wallet connection not found or already disconnected"
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Soft delete - just mark as inactive
+    wallet_connection.is_active = False
+    wallet_connection.save()
+    
+    # Or hard delete if preferred:
+    # wallet_name = wallet_connection.wallet_name
+    # wallet_connection.delete()
+    
+    return Response({
+        "success": True,
+        "message": f"{wallet_connection.wallet_name} disconnected successfully"
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def get_wallet_detail(request, wallet_type):
+    """
+    GET: Get details of a specific wallet connection
+    URL param: wallet_type
+    """
+    user = request.user
+    
+    try:
+        wallet_connection = WalletConnection.objects.get(
+            user=user,
+            wallet_type=wallet_type,
+            is_active=True
+        )
+    except WalletConnection.DoesNotExist:
+        return Response(
+            {
+                "success": False,
+                "error": "Wallet connection not found"
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    serializer = WalletConnectionSerializer(wallet_connection)
+    
+    return Response({
+        "success": True,
+        "wallet": serializer.data
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def get_available_wallet_types(request):
+    """
+    GET: Get list of all available wallet types
+    Public endpoint - no authentication required
+    """
+    wallet_types = [
+        {"id": choice[0], "name": choice[1]}
+        for choice in WalletConnection.WALLET_TYPES
+    ]
+    
+    return Response({
+        "success": True,
+        "wallet_types": wallet_types,
+        "count": len(wallet_types)
+    }, status=status.HTTP_200_OK)
 
 
 

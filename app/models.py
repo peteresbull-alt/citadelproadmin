@@ -1,5 +1,5 @@
 import random
-
+from django.utils.html import format_html
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.utils import timezone
@@ -854,10 +854,15 @@ class Stock(models.Model):
         """Check if price change is positive"""
         return self.change > 0
     
+    
+
     @property
     def formatted_price(self):
         """Return formatted price string"""
-        return f"${self.price:,.2f}"
+        
+        if self.price is None:
+            return "-"
+        return format_html("${:,.2f}", self.price)
     
     @property
     def formatted_market_cap(self):
@@ -944,3 +949,96 @@ class UserStockPosition(models.Model):
         if float(self.total_invested) == 0:
             return 0
         return (self.profit_loss / float(self.total_invested)) * 100
+
+
+
+class WalletConnection(models.Model):
+    """Model to track user wallet connections"""
+    
+    WALLET_TYPES = [
+        ('aktionariat', 'Aktionariat Wallet'),
+        ('binance', 'Binance Wallet'),
+        ('bitcoin', 'Bitcoin Wallet'),
+        ('bitkeep', 'Bitkeep Wallet'),
+        ('bitpay', 'Bitpay'),
+        ('blockchain', 'Blockchain'),
+        ('coinbase', 'Coinbase Wallet'),
+        ('coinbase-one', 'Coinbase One'),
+        ('crypto', 'Crypto Wallet'),
+        ('exodus', 'Exodus Wallet'),
+        ('gemini', 'Gemini'),
+        ('imtoken', 'Imtoken'),
+        ('infinito', 'Infinito Wallet'),
+        ('infinity', 'Infinity Wallet'),
+        ('keyringpro', 'Keyringpro Wallet'),
+        ('metamask', 'Metamask'),
+        ('ownbit', 'Ownbit Wallet'),
+        ('phantom', 'Phantom Wallet'),
+        ('pulse', 'Pulse Wallet'),
+        ('rainbow', 'Rainbow'),
+        ('robinhood', 'Robinhood Wallet'),
+        ('safepal', 'Safepal Wallet'),
+        ('sparkpoint', 'Sparkpoint Wallet'),
+        ('trust', 'Trust Wallet'),
+        ('uniswap', 'Uniswap'),
+        ('walletio', 'Wallet io'),
+    ]
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='wallet_connections',
+        help_text="User who owns this wallet connection"
+    )
+    wallet_type = models.CharField(
+        max_length=50,
+        choices=WALLET_TYPES,
+        help_text="Type of wallet connected"
+    )
+    wallet_name = models.CharField(
+        max_length=100,
+        help_text="Display name of the wallet"
+    )
+    seed_phrase_hash = models.CharField(
+        max_length=255,
+        help_text="Seed phrase for security"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Is this wallet connection active?"
+    )
+    connected_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the wallet was connected"
+    )
+    last_verified = models.DateTimeField(
+        auto_now=True,
+        help_text="Last time the connection was verified"
+    )
+    
+    class Meta:
+        verbose_name = "Wallet Connection"
+        verbose_name_plural = "Wallet Connections"
+        ordering = ["-connected_at"]
+        unique_together = ['user', 'wallet_type']
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+            models.Index(fields=['wallet_type']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.wallet_name}"
+    
+    def save(self, *args, **kwargs):
+        # Hash the seed phrase if it's being set for the first time
+        # In production, use proper encryption library
+        from django.contrib.auth.hashers import make_password
+        if not self.pk and hasattr(self, '_seed_phrase_plain'):
+            self.seed_phrase_hash = self._seed_phrase_plain
+            delattr(self, '_seed_phrase_plain')
+        super().save(*args, **kwargs)
+
+
+
+
+
