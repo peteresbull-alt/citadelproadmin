@@ -180,12 +180,19 @@ class Trader(models.Model):
         help_text="Trader username. Example: @SERGE"
     )
     country = models.CharField(max_length=100)
+    country_flag =CloudinaryField(
+        "Country Flag Image",
+        folder="copy_trader_flag_images",
+        blank=True,
+        null=True,
+        help_text="Upload the trader's country flag image"
+    )
     avatar = CloudinaryField(
         "Trader Image",
         folder="copy_trader_images",
         blank=True,
         null=True,
-        help_text="Upload the trader image"
+        help_text="Upload the trader's image"
     )
     badge = models.CharField(
         max_length=20,
@@ -782,59 +789,17 @@ class Stock(models.Model):
         ("DOCU", "DocuSign Inc. (DOCU)"),
     ]
     
-    symbol = models.CharField(
-        max_length=10,
-        choices=SYMBOL_CHOICES,
-        unique=True,
-        help_text="Select stock symbol from the dropdown"
-    )
-    name = models.CharField(
-        max_length=200,
-        help_text="Full company name. Example: Apple Inc."
-    )
-    logo_url = models.URLField(
-        max_length=500,
-        blank=True,
-        null=True,
-        help_text="Company logo URL. Example: https://logo.clearbit.com/apple.com"
-    )
-    price = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        help_text="Current stock price. Example: 225.91"
-    )
-    change = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        help_text="Price change amount. Example: 12.15 (can be negative)"
-    )
-    change_percent = models.DecimalField(
-        max_digits=8,
-        decimal_places=2,
-        help_text="Price change percentage. Example: 5.68 (can be negative)"
-    )
-    volume = models.BigIntegerField(
-        default=0,
-        help_text="Trading volume"
-    )
-    market_cap = models.BigIntegerField(
-        default=0,
-        help_text="Market capitalization in dollars"
-    )
-    sector = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        help_text="Company sector. Example: Technology, Finance, Healthcare"
-    )
-    is_active = models.BooleanField(
-        default=True,
-        help_text="Is this stock actively traded/displayed?"
-    )
-    is_featured = models.BooleanField(
-        default=False,
-        help_text="Featured stock on homepage?"
-    )
+    symbol = models.CharField(max_length=10, choices=SYMBOL_CHOICES, unique=True)
+    name = models.CharField(max_length=200)
+    logo_url = models.URLField(max_length=500, blank=True, null=True)
+    price = models.DecimalField(max_digits=12, decimal_places=2)
+    change = models.DecimalField(max_digits=12, decimal_places=2)
+    change_percent = models.DecimalField(max_digits=8, decimal_places=2)
+    volume = models.BigIntegerField(default=0)
+    market_cap = models.BigIntegerField(default=0)
+    sector = models.CharField(max_length=100, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    is_featured = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -860,10 +825,10 @@ class Stock(models.Model):
     @property
     def formatted_price(self):
         """Return formatted price string"""
-        
         if self.price is None:
             return "-"
-        return format_html("${:,.2f}", self.price)
+        # Return plain string, not HTML (for API serialization)
+        return f"${float(self.price):,.2f}"
     
     @property
     def formatted_market_cap(self):
@@ -877,58 +842,43 @@ class Stock(models.Model):
         return f"${self.market_cap:,}"
 
 
+
 class UserStockPosition(models.Model):
-    """Model to track user's stock positions"""
+    """Model for user stock positions"""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='stock_positions')
+    stock = models.ForeignKey(Stock, on_delete=models.CASCADE, related_name='positions')
+    shares = models.DecimalField(max_digits=20, decimal_places=8)
+    average_buy_price = models.DecimalField(max_digits=12, decimal_places=2)
+    total_invested = models.DecimalField(max_digits=20, decimal_places=2)
     
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='stock_positions',
-        help_text="User who owns this position"
+    # NEW: Admin-controlled profit fields
+    admin_profit_loss = models.DecimalField(
+        max_digits=20, 
+        decimal_places=2, 
+        default=0,
+        help_text="Admin sets custom profit/loss value"
     )
-    stock = models.ForeignKey(
-        Stock,
-        on_delete=models.CASCADE,
-        related_name='positions',
-        help_text="Stock in this position"
+    admin_profit_loss_percent = models.DecimalField(
+        max_digits=8, 
+        decimal_places=2, 
+        default=0,
+        help_text="Admin sets custom profit/loss percentage"
     )
-    shares = models.DecimalField(
-        max_digits=12,
-        decimal_places=4,
-        help_text="Number of shares owned"
+    use_admin_profit = models.BooleanField(
+        default=False,
+        help_text="Use admin-set profit instead of calculated profit"
     )
-    average_buy_price = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        help_text="Average purchase price per share"
-    )
-    total_invested = models.DecimalField(
-        max_digits=15,
-        decimal_places=2,
-        help_text="Total amount invested"
-    )
-    opened_at = models.DateTimeField(
-        auto_now_add=True,
-        help_text="When position was opened"
-    )
-    is_active = models.BooleanField(
-        default=True,
-        help_text="Is this position still open?"
-    )
-    closed_at = models.DateTimeField(
-        blank=True,
-        null=True,
-        help_text="When position was closed"
-    )
+    
+    is_active = models.BooleanField(default=True)
+    opened_at = models.DateTimeField(auto_now_add=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         verbose_name = "User Stock Position"
         verbose_name_plural = "User Stock Positions"
         ordering = ["-opened_at"]
-        unique_together = ['user', 'stock', 'is_active']
         indexes = [
-            models.Index(fields=['user', 'is_active']),
-            models.Index(fields=['stock', 'is_active']),
+            models.Index(fields=['user', 'stock', 'is_active']),
         ]
     
     def __str__(self):
@@ -936,20 +886,28 @@ class UserStockPosition(models.Model):
     
     @property
     def current_value(self):
-        """Calculate current value of position"""
-        return float(self.shares) * float(self.stock.price)
+        """Calculate current value based on shares * current stock price"""
+        return self.shares * self.stock.price
     
     @property
     def profit_loss(self):
-        """Calculate profit/loss"""
-        return self.current_value - float(self.total_invested)
+        """Return profit/loss - either admin-set or calculated"""
+        if self.use_admin_profit:
+            return self.admin_profit_loss
+        else:
+            # Calculate based on current value vs invested
+            return self.current_value - self.total_invested
     
     @property
     def profit_loss_percent(self):
-        """Calculate profit/loss percentage"""
-        if float(self.total_invested) == 0:
+        """Return profit/loss percentage - either admin-set or calculated"""
+        if self.use_admin_profit:
+            return self.admin_profit_loss_percent
+        else:
+            # Calculate percentage
+            if self.total_invested > 0:
+                return (self.profit_loss / self.total_invested) * 100
             return 0
-        return (self.profit_loss / float(self.total_invested)) * 100
 
 
 
