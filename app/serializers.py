@@ -85,16 +85,22 @@ class AdminWalletSerializer(serializers.ModelSerializer):
 
 class TraderSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(use_url=True)
+    country_flag = serializers.ImageField(use_url=True)
     class Meta:
         model = Trader
         fields = [
-            "id", "name", "country", "avatar", "gain", "risk",
+            "id", "name", "country", "country_flag", "avatar", "gain", "risk",
             "capital", "copiers", "avg_trade_time", "trades",
         ]
 
     def get_avatar(self, obj):
         if obj.avatar:
             return obj.avatar.url  # Full Cloudinary URL
+        return None
+    
+    def get_country_flag(self, obj):
+        if obj.country_flag:
+            return obj.country_flag.url  # Full Cloudinary URL
         return None
 
 
