@@ -8,14 +8,11 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-
-
 # ----------------------------
 # SECURITY
 # ----------------------------
 SECRET_KEY = config('SECRET_KEY', default='your-local-secret-key')
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)  # Set to False for production
 
 ALLOWED_HOSTS = ["*"]
 
@@ -104,8 +101,6 @@ TEMPLATES = [
 # ----------------------------
 # DATABASE
 # ----------------------------
-
-
 DATABASES = {
     'default': dj_database_url.config(
         default=config('DATABASE_URL', default=f'sqlite:///{BASE_DIR / "db.sqlite3"}'),
@@ -114,28 +109,26 @@ DATABASES = {
 }
 
 
-
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": BASE_DIR / "db.sqlite3",
-#     }
-# }
-
 # ----------------------------
-# STATIC & MEDIA
+# STATIC & MEDIA FILES
 # ----------------------------
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 
-STATIC_ROOT = BASE_DIR / 'staticfiles' / 'static'
+# CRITICAL FIX: Remove the extra 'static' subdirectory
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_ROOT = BASE_DIR / 'media'
 
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-
-# Only include STATICFILES_DIRS if the 'static' folder exists (avoid errors on Vercel)
+# Only include STATICFILES_DIRS if the 'static' folder exists
 if (BASE_DIR / "static").exists():
     STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# Move STATICFILES_STORAGE after STATIC_ROOT
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+# WhiteNoise configuration
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = DEBUG
 
 # ----------------------------
 # CORS
@@ -155,3 +148,4 @@ USE_I18N = True
 USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
