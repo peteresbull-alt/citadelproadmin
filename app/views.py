@@ -11,10 +11,9 @@ from collections import defaultdict
 from django.utils import timezone
 from .serializers import AdminWalletSerializer
 from decimal import Decimal, InvalidOperation
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.decorators import api_view, permission_classes, parser_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes, authentication_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
@@ -42,6 +41,13 @@ from .serializers import (
     WalletConnectionSerializer,
     WalletConnectionCreateSerializer,
     WalletConnectionListSerializer,
+
+    # SIGNAL
+
+    SignalListSerializer,
+    SignalDetailSerializer,
+    UserSignalPurchaseSerializer,
+    SignalPurchaseCreateSerializer,
 )
 from .models import (
     Ticket, 
@@ -59,6 +65,10 @@ from .models import (
     Stock, 
     UserStockPosition,
     WalletConnection,
+
+    Signal, 
+    UserSignalPurchase, 
+    Transaction,
 )
 
 User = get_user_model()
@@ -2676,7 +2686,294 @@ def get_kyc_details(request):
 
 
 
+# SIGNALS
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def signal_list(request):
+    """
+    GET: List all active signals
+    Query params:
+    - signal_type: Filter by signal type (stock, crypto, forex, commodity)
+    - featured: Show only featured signals (true/false)
+    - search: Search in signal name
+    """
+    signals = Signal.objects.filter(is_active=True)
+    
+    # Filter by signal type
+    signal_type = request.GET.get("signal_type")
+    if signal_type:
+        signals = signals.filter(signal_type=signal_type)
+    
+    # Filter by featured
+    featured = request.GET.get("featured")
+    if featured and featured.lower() == "true":
+        signals = signals.filter(is_featured=True)
+    
+    # Search functionality
+    search = request.GET.get("search")
+    if search:
+        from django.db.models import Q
+        signals = signals.filter(
+            Q(name__icontains=search)
+        )
+    
+    serializer = SignalListSerializer(
+        signals, 
+        many=True, 
+        context={'request': request}
+    )
+    
+    return Response({
+        "success": True,
+        "signals": serializer.data,
+        "count": len(serializer.data)
+    }, status=status.HTTP_200_OK)
 
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def signal_detail(request, signal_id):
+    """
+    GET: Get detailed information about a specific signal
+    """
+    try:
+        signal = Signal.objects.get(id=signal_id, is_active=True)
+    except Signal.DoesNotExist:
+        return Response(
+            {
+                "success": False,
+                "error": "Signal not found"
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    serializer = SignalDetailSerializer(signal, context={'request': request})
+    
+    return Response({
+        "success": True,
+        "signal": serializer.data
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def purchase_signal(request):
+    """
+    POST: Purchase a trading signal
+    Expects:
+    - signal_id: ID of the signal to purchase
+    - amount: Amount user is willing to pay (must match or be close to signal price)
+    """
+    user = request.user
+    
+    # Validate input
+    serializer = SignalPurchaseCreateSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(
+            {
+                "success": False,
+                "errors": serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    signal_id = serializer.validated_data['signal_id']
+    amount = serializer.validated_data['amount']
+    
+    # Get signal
+    try:
+        signal = Signal.objects.get(id=signal_id, is_active=True)
+    except Signal.DoesNotExist:
+        return Response(
+            {
+                "success": False,
+                "error": "Signal not found or no longer available"
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check if signal is expired
+    if signal.is_expired:
+        return Response(
+            {
+                "success": False,
+                "error": "This signal has expired and is no longer available"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if user already purchased this signal
+    if UserSignalPurchase.objects.filter(user=user, signal=signal).exists():
+        return Response(
+            {
+                "success": False,
+                "error": "You have already purchased this signal"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate amount matches signal price (allow small variation)
+    if amount < signal.price:
+        return Response(
+            {
+                "success": False,
+                "error": f"Amount must be at least ${signal.price}. Please enter the correct signal price.",
+                "required_amount": str(signal.price)
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if amount is significantly higher than signal price
+    if amount > signal.price * Decimal('1.01'):  # More than 1% higher
+        return Response(
+            {
+                "success": False,
+                "error": f"Amount cannot exceed signal price by more than 1%. Signal price is ${signal.price}",
+                "required_amount": str(signal.price)
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check user balance
+    if user.balance < signal.price:
+        return Response(
+            {
+                "success": False,
+                "error": f"Insufficient balance. Required: ${signal.price}, Available: ${user.balance}",
+                "required_amount": str(signal.price),
+                "user_balance": str(user.balance)
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Create signal snapshot for purchase record
+    signal_snapshot = {
+        'name': signal.name,
+        'signal_type': signal.signal_type,
+        'signal_strength': str(signal.signal_strength),
+        'market_analysis': signal.market_analysis,
+        'entry_point': signal.entry_point,
+        'target_price': signal.target_price,
+        'stop_loss': signal.stop_loss,
+        'action': signal.action,
+        'timeframe': signal.timeframe,
+        'risk_level': signal.risk_level,
+        'technical_indicators': signal.technical_indicators,
+        'fundamental_analysis': signal.fundamental_analysis,
+    }
+    
+    # Generate unique reference
+    reference = f"SIG-{get_random_string(12).upper()}"
+    
+    # Create purchase record
+    try:
+        purchase = UserSignalPurchase.objects.create(
+            user=user,
+            signal=signal,
+            amount_paid=signal.price,
+            purchase_reference=reference,
+            signal_data=signal_snapshot
+        )
+        
+        # Deduct from user balance
+        user.balance -= signal.price
+        user.save()
+        
+        # Create transaction record
+        Transaction.objects.create(
+            user=user,
+            transaction_type="withdrawal",
+            amount=signal.price,
+            reference=reference,
+            description=f"Purchased signal: {signal.name}",
+            status="completed"
+        )
+        
+        # Create notification
+        from .models import Notification
+        Notification.objects.create(
+            user=user,
+            type="system",
+            title="Signal Purchased Successfully",
+            message=f"You have successfully purchased the {signal.name} trading signal.",
+            full_details=f"Signal: {signal.name}\nAmount Paid: ${signal.price}\nReference: {reference}",
+            priority="medium"
+        )
+        
+        return Response({
+            "success": True,
+            "message": "Signal purchased successfully",
+            "purchase": {
+                "id": purchase.id,
+                "signal": SignalDetailSerializer(signal).data,
+                "amount_paid": str(purchase.amount_paid),
+                "reference": purchase.purchase_reference,
+                "purchased_at": purchase.purchased_at.isoformat(),
+            },
+            "new_balance": str(user.balance)
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        return Response(
+            {
+                "success": False,
+                "error": f"Failed to complete purchase: {str(e)}"
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def user_purchased_signals(request):
+    """
+    GET: Get all signals purchased by the authenticated user
+    """
+    purchases = UserSignalPurchase.objects.filter(
+        user=request.user
+    ).order_by('-purchased_at')
+    
+    serializer = UserSignalPurchaseSerializer(purchases, many=True)
+    
+    # Calculate total spent
+    total_spent = sum(
+        float(purchase.amount_paid) for purchase in purchases
+    )
+    
+    return Response({
+        "success": True,
+        "purchases": serializer.data,
+        "summary": {
+            "total_signals": len(serializer.data),
+            "total_spent": f"{total_spent:.2f}"
+        }
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def user_signal_balance(request):
+    """
+    GET: Get user's signal wallet balance
+    """
+    user = request.user
+    
+    # Get total spent on signals
+    total_spent = UserSignalPurchase.objects.filter(
+        user=user
+    ).aggregate(
+        total=models.Sum('amount_paid')
+    )['total'] or Decimal('0.00')
+    
+    return Response({
+        "success": True,
+        "balance": str(user.balance),
+        "total_spent_on_signals": str(total_spent),
+        "total_signals_purchased": UserSignalPurchase.objects.filter(user=user).count()
+    }, status=status.HTTP_200_OK)
 
 
 

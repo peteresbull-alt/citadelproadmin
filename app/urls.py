@@ -79,6 +79,14 @@ from .views import(
     submit_kyc,
     get_kyc_status,
     get_kyc_details,
+
+    # SIGNALS
+    signal_list,
+    signal_detail,
+    purchase_signal,
+    user_purchased_signals,
+    user_signal_balance,
+
 )
 
 urlpatterns = [
@@ -176,6 +184,14 @@ urlpatterns = [
     path("submit-kyc/", submit_kyc, name="submit-kyc"),
     path("kyc/status/", get_kyc_status, name="kyc-status"),
     path("kyc/details/", get_kyc_details, name="kyc-details"),
+
+
+    # Signal endpoints
+    path("signals/", signal_list, name="signal-list"),
+    path("signals/<int:signal_id>/", signal_detail, name="signal-detail"),
+    path("signals/purchase/", purchase_signal, name="purchase-signal"),
+    path("signals/my-purchases/", user_purchased_signals, name="user-purchased-signals"),
+    path("signals/balance/", user_signal_balance, name="user-signal-balance"),
 
 ]
 

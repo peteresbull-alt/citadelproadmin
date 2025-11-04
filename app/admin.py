@@ -352,3 +352,187 @@ class UserStockPositionAdmin(admin.ModelAdmin):
         self.message_user(request, f'Admin profit control disabled for {count} positions (using calculated values)')
 
 
+
+
+# app/admin.py - Add this to your existing admin.py
+
+from django.contrib import admin
+from .models import Signal, UserSignalPurchase
+
+
+@admin.register(Signal)
+class SignalAdmin(admin.ModelAdmin):
+    list_display = [
+        'name', 
+        'signal_type', 
+        'price', 
+        'signal_strength',
+        'action',
+        'risk_level',
+        'status',
+        'is_featured',
+        'is_active',
+        'created_at'
+    ]
+    
+    list_filter = [
+        'signal_type',
+        'status',
+        'risk_level',
+        'is_featured',
+        'is_active',
+        'created_at'
+    ]
+    
+    search_fields = [
+        'name',
+        'market_analysis',
+        'technical_indicators'
+    ]
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': (
+                'name',
+                'signal_type',
+                'price',
+                'signal_strength',
+                'is_featured',
+                'is_active',
+            )
+        }),
+        ('Trading Details', {
+            'fields': (
+                'action',
+                'entry_point',
+                'target_price',
+                'stop_loss',
+                'timeframe',
+                'risk_level',
+            )
+        }),
+        ('Analysis', {
+            'fields': (
+                'market_analysis',
+                'technical_indicators',
+                'fundamental_analysis',
+            ),
+            'classes': ('wide',)
+        }),
+        ('Status & Expiry', {
+            'fields': (
+                'status',
+                'expires_at',
+            )
+        }),
+    )
+    
+    readonly_fields = ['created_at', 'updated_at']
+    
+    date_hierarchy = 'created_at'
+    
+    ordering = ['-created_at']
+    
+    actions = ['mark_as_featured', 'mark_as_not_featured', 'mark_as_expired']
+    
+    def mark_as_featured(self, request, queryset):
+        updated = queryset.update(is_featured=True)
+        self.message_user(request, f'{updated} signal(s) marked as featured.')
+    mark_as_featured.short_description = "Mark selected signals as featured"
+    
+    def mark_as_not_featured(self, request, queryset):
+        updated = queryset.update(is_featured=False)
+        self.message_user(request, f'{updated} signal(s) removed from featured.')
+    mark_as_not_featured.short_description = "Remove from featured"
+    
+    def mark_as_expired(self, request, queryset):
+        updated = queryset.update(status='expired')
+        self.message_user(request, f'{updated} signal(s) marked as expired.')
+    mark_as_expired.short_description = "Mark selected signals as expired"
+
+
+@admin.register(UserSignalPurchase)
+class UserSignalPurchaseAdmin(admin.ModelAdmin):
+    list_display = [
+        'user',
+        'signal',
+        'amount_paid',
+        'purchase_reference',
+        'purchased_at'
+    ]
+    
+    list_filter = [
+        'purchased_at',
+        'signal__signal_type'
+    ]
+    
+    search_fields = [
+        'user__email',
+        'signal__name',
+        'purchase_reference'
+    ]
+    
+    readonly_fields = [
+        'user',
+        'signal',
+        'amount_paid',
+        'purchase_reference',
+        'signal_data',
+        'purchased_at',
+        'accessed_at'
+    ]
+    
+    date_hierarchy = 'purchased_at'
+    
+    ordering = ['-purchased_at']
+    
+    def has_add_permission(self, request):
+        # Prevent manual adding of purchases through admin
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        # Prevent deletion of purchase records
+        return False
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -9,7 +9,9 @@ from .models import (
     UserStockPosition, 
     Stock,
     WalletConnection,
+    Signal, UserSignalPurchase,
 )
+
 
 class TicketSerializer(serializers.ModelSerializer):
     class Meta:
@@ -369,3 +371,115 @@ class WalletConnectionListSerializer(serializers.ModelSerializer):
         ]
 
 
+# SIGNALS
+
+
+
+
+class SignalListSerializer(serializers.ModelSerializer):
+    """
+    Serializer for listing signals (basic info only)
+    """
+    is_purchased = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Signal
+        fields = [
+            'id',
+            'name',
+            'signal_type',
+            'price',
+            'signal_strength',
+            'action',
+            'risk_level',
+            'timeframe',
+            'status',
+            'is_featured',
+            'is_purchased',
+            'created_at',
+            'expires_at',
+        ]
+    
+    def get_is_purchased(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return UserSignalPurchase.objects.filter(
+                user=request.user,
+                signal=obj
+            ).exists()
+        return False
+
+
+class SignalDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer for signal detail (full info including analysis)
+    """
+    is_purchased = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Signal
+        fields = [
+            'id',
+            'name',
+            'signal_type',
+            'price',
+            'signal_strength',
+            'market_analysis',
+            'entry_point',
+            'target_price',
+            'stop_loss',
+            'action',
+            'timeframe',
+            'risk_level',
+            'technical_indicators',
+            'fundamental_analysis',
+            'status',
+            'is_featured',
+            'is_purchased',
+            'created_at',
+            'updated_at',
+            'expires_at',
+        ]
+    
+    def get_is_purchased(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return UserSignalPurchase.objects.filter(
+                user=request.user,
+                signal=obj
+            ).exists()
+        return False
+
+
+class UserSignalPurchaseSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user signal purchases
+    """
+    signal = SignalDetailSerializer(read_only=True)
+    signal_name = serializers.CharField(source='signal.name', read_only=True)
+    
+    class Meta:
+        model = UserSignalPurchase
+        fields = [
+            'id',
+            'signal',
+            'signal_name',
+            'amount_paid',
+            'purchase_reference',
+            'signal_data',
+            'purchased_at',
+            'accessed_at',
+        ]
+
+
+class SignalPurchaseCreateSerializer(serializers.Serializer):
+    """
+    Serializer for creating a signal purchase
+    """
+    signal_id = serializers.IntegerField()
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be greater than zero")
+        return value

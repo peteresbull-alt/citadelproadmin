@@ -7,8 +7,11 @@ from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from rest_framework.authtoken.models import Token
+from decimal import Decimal
 
 from cloudinary.models import CloudinaryField
+
+
 
 
 class CustomUserManager(BaseUserManager):
@@ -996,6 +999,330 @@ class WalletConnection(models.Model):
             self.seed_phrase_hash = self._seed_phrase_plain
             delattr(self, '_seed_phrase_plain')
         super().save(*args, **kwargs)
+
+
+
+
+
+# SIGNALS
+
+class Signal(models.Model):
+    """
+    Trading signals that users can purchase
+    """
+    SIGNAL_TYPES = [
+        ('stock', 'Stock'),
+        ('crypto', 'Cryptocurrency'),
+        ('forex', 'Forex'),
+        ('commodity', 'Commodity'),
+    ]
+    
+    SIGNAL_STATUS = [
+        ('active', 'Active'),
+        ('expired', 'Expired'),
+        ('completed', 'Completed'),
+    ]
+
+    # Basic Information
+    name = models.CharField(max_length=100, help_text="Signal name (e.g., AAPL, BTC)")
+    signal_type = models.CharField(max_length=20, choices=SIGNAL_TYPES, default='stock')
+    price = models.DecimalField(max_digits=12, decimal_places=2, help_text="Price to purchase this signal")
+    
+    # Signal Strength & Performance
+    signal_strength = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2, 
+        help_text="Signal strength percentage (0-100)",
+        default=95.00
+    )
+    
+    # Market Analysis
+    market_analysis = models.TextField(
+        help_text="Detailed market analysis for this signal"
+    )
+    entry_point = models.CharField(max_length=100, help_text="Recommended entry point")
+    target_price = models.CharField(max_length=100, help_text="Target price/exit point")
+    stop_loss = models.CharField(max_length=100, help_text="Stop loss recommendation")
+    
+    # Trading Recommendations
+    action = models.CharField(
+        max_length=50, 
+        help_text="Trading action (e.g., BUY, SELL, HOLD)"
+    )
+    timeframe = models.CharField(
+        max_length=50, 
+        help_text="Trading timeframe (e.g., 1-3 days, 1-2 weeks)"
+    )
+    risk_level = models.CharField(
+        max_length=20,
+        choices=[
+            ('low', 'Low'),
+            ('medium', 'Medium'),
+            ('high', 'High'),
+        ],
+        default='medium'
+    )
+    
+    # Additional Details
+    technical_indicators = models.TextField(
+        blank=True,
+        help_text="Technical indicators used (RSI, MACD, etc.)"
+    )
+    fundamental_analysis = models.TextField(
+        blank=True,
+        help_text="Fundamental analysis notes"
+    )
+    
+    # Status & Metadata
+    status = models.CharField(max_length=20, choices=SIGNAL_STATUS, default='active')
+    is_featured = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField(null=True, blank=True, help_text="Signal expiration date")
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Trading Signal'
+        verbose_name_plural = 'Trading Signals'
+    
+    def __str__(self):
+        return f"{self.name} - ${self.price}"
+    
+    @property
+    def is_expired(self):
+        if self.expires_at:
+            from django.utils import timezone
+            return timezone.now() > self.expires_at
+        return False
+
+
+class UserSignalPurchase(models.Model):
+    """
+    Track user purchases of signals
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='signal_purchases')
+    signal = models.ForeignKey(Signal, on_delete=models.CASCADE, related_name='purchases')
+    
+    # Purchase Details
+    amount_paid = models.DecimalField(max_digits=12, decimal_places=2)
+    purchase_reference = models.CharField(max_length=50, unique=True)
+    
+    # Signal Snapshot (in case signal is updated after purchase)
+    signal_data = models.JSONField(help_text="Snapshot of signal data at purchase time")
+    
+    # Timestamps
+    purchased_at = models.DateTimeField(auto_now_add=True)
+    accessed_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-purchased_at']
+        verbose_name = 'Signal Purchase'
+        verbose_name_plural = 'Signal Purchases'
+        unique_together = ['user', 'signal']  # One user can only purchase each signal once
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.signal.name} - ${self.amount_paid}"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
