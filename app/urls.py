@@ -87,6 +87,13 @@ from .views import(
     user_purchased_signals,
     user_signal_balance,
 
+
+    # Referer
+    get_referral_info,
+    get_referral_list,
+    validate_referral_code,
+    get_referral_earnings_history,
+
 )
 
 urlpatterns = [
@@ -193,5 +200,12 @@ urlpatterns = [
     path("signals/my-purchases/", user_purchased_signals, name="user-purchased-signals"),
     path("signals/balance/", user_signal_balance, name="user-signal-balance"),
 
+
+    path('referral/info/', get_referral_info, name='get_referral_info'),
+    path('referral/list/', get_referral_list, name='get_referral_list'),
+    path('referral/validate/', validate_referral_code, name='validate_referral_code'),
+    path('referral/earnings/', get_referral_earnings_history, name='get_referral_earnings_history'),
+
 ]
+
 

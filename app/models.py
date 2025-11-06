@@ -48,11 +48,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     # Loyalty Status
     LOYALTY_TIERS = [
         ('iron', 'Iron'),
-        ('bronze', 'Bronze'),
         ('silver', 'Silver'),
         ('gold', 'Gold'),
-        ('platinum', 'Platinum'),
-        ('diamond', 'Diamond'),
     ]
 
     # KYC Fields
@@ -103,8 +100,38 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     next_loyalty_status = models.CharField(
         max_length=20,
         choices=LOYALTY_TIERS,
-        default='bronze',
+        default='silver',
         help_text="Next loyalty tier"
+    )
+
+    next_amount_to_upgrade = models.DecimalField(
+        max_digits=20,
+        decimal_places=2,
+        default=5000.00,
+        help_text="Total bonus earned from referrals"
+    )
+
+    # Referral System Fields
+    referral_code = models.CharField(
+        max_length=12,
+        unique=True,
+        blank=True,
+        null=True,
+        help_text="User's unique referral code"
+    )
+    referred_by = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='referrals',
+        help_text="User who referred this person"
+    )
+    referral_bonus_earned = models.DecimalField(
+        max_digits=20,
+        decimal_places=2,
+        default=0.00,
+        help_text="Total bonus earned from referrals"
     )
 
 
@@ -132,16 +159,51 @@ def generate_unique_account_id():
             return account_id
 
 
-# Signal: auto-create token for each new user
+def generate_unique_referral_code():
+    """Generate a unique 8-character referral code"""
+    import string
+    import random
+    
+    while True:
+        # Generate code with letters and numbers
+        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        if not CustomUser.objects.filter(referral_code=code).exists():
+            return code
+
+
+
+
+# SINGLE COMBINED SIGNAL (replaces both above)
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_auth_token(sender, instance=None, created=False, **kwargs):
+    """
+    Auto-create auth token and generate unique IDs for new users
+    """
     if created:
+        # Create auth token
         Token.objects.create(user=instance)
 
-        # Assign unique 10-digit account_id if not already set
+        # Track if we need to save
+        fields_to_update = []
+
+        # Generate account_id if missing
         if not instance.account_id:
             instance.account_id = generate_unique_account_id()
-            instance.save(update_fields=["account_id"])
+            fields_to_update.append("account_id")
+            
+        # Generate referral_code if missing
+        if not instance.referral_code:
+            instance.referral_code = generate_unique_referral_code()
+            fields_to_update.append("referral_code")
+        
+        # Only save if we generated something
+        if fields_to_update:
+            instance.save(update_fields=fields_to_update)
+
+
+
+
+
 
 
 class Portfolio(models.Model):

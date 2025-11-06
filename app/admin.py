@@ -57,10 +57,16 @@ class CustomUserAdmin(UserAdmin):
                 'has_submitted_kyc', 'is_verified'
             )
         }),
+        ('Referral Information', {
+            'fields': (
+                'referral_code', 'referred_by', 'referral_bonus_earned',
+            )
+        }),
         ('Financial', {
             'fields': (
                 'account_id', 'balance', 'profit', 
-                'current_loyalty_status', 'next_loyalty_status'
+                'current_loyalty_status', 'next_loyalty_status',
+                'next_amount_to_upgrade',
             )
         }),
         ('Permissions', {
@@ -146,11 +152,11 @@ class PortfolioAdmin(admin.ModelAdmin):
 # admin.site.register(Transaction)
 admin.site.register(PaymentMethod)
 admin.site.register(AdminWallet)
-admin.site.register(Trader)
+
 # admin.site.register(Asset)
 admin.site.register(News)
 
-admin.site.register(TraderPortfolio)
+
 
 # Register Notification model
 admin.site.register(Notification)
@@ -495,6 +501,256 @@ class UserSignalPurchaseAdmin(admin.ModelAdmin):
         return False
 
 
+# Add this to your admin.py file, replacing the basic registrations
+
+from django.contrib import admin
+from django.utils.html import format_html
+from .models import Trader, TraderPortfolio
+
+@admin.register(Trader)
+class TraderAdmin(admin.ModelAdmin):
+    """Admin configuration for Trader model"""
+    
+    list_display = [
+        'name',
+        'username',
+        'country',
+        'badge',
+        'gain',
+        'risk',
+        'copiers',
+        'is_active',
+        'created_at'
+    ]
+    
+    list_filter = [
+        'badge',
+        'is_active',
+        'country',
+        'created_at'
+    ]
+    
+    search_fields = [
+        'name',
+        'username',
+        'country'
+    ]
+    
+    list_editable = [
+        'is_active',
+        'badge'
+    ]
+    
+    readonly_fields = [
+        'created_at',
+        'updated_at',
+        'avatar_preview',
+        'flag_preview'
+    ]
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': (
+                'name',
+                'username',
+                'country',
+                'badge',
+                'is_active'
+            )
+        }),
+        ('Images', {
+            'fields': (
+                'avatar',
+                'avatar_preview',
+                'country_flag',
+                'flag_preview'
+            )
+        }),
+        ('Trading Statistics', {
+            'fields': (
+                'gain',
+                'risk',
+                'capital',
+                'copiers',
+                'avg_trade_time',
+                'trades'
+            )
+        }),
+        ('Subscriber & Position Stats', {
+            'fields': (
+                'subscribers',
+                'current_positions',
+                'min_account_threshold',
+                'expert_rating'
+            )
+        }),
+        ('Performance Statistics', {
+            'fields': (
+                'return_ytd',
+                'return_2y',
+                'avg_score_7d',
+                'profitable_weeks'
+            )
+        }),
+        ('Trading Details', {
+            'fields': (
+                'total_trades_12m',
+                'avg_profit_percent',
+                'avg_loss_percent'
+            )
+        }),
+        ('JSON Data', {
+            'fields': (
+                'performance_data',
+                'monthly_performance',
+                'frequently_traded'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': (
+                'created_at',
+                'updated_at'
+            ),
+            'classes': ('collapse',)
+        })
+    )
+    
+    ordering = ['-gain', '-copiers']
+    
+    date_hierarchy = 'created_at'
+    
+    actions = ['mark_as_active', 'mark_as_inactive']
+    
+    def avatar_preview(self, obj):
+        """Display avatar image preview"""
+        if obj.avatar:
+            try:
+                return format_html(
+                    '<img src="{}" style="max-height: 100px; max-width: 100px; border-radius: 50%;" />',
+                    obj.avatar.url
+                )
+            except:
+                return "No image available"
+        return "No avatar"
+    avatar_preview.short_description = 'Avatar Preview'
+    
+    def flag_preview(self, obj):
+        """Display country flag preview"""
+        if obj.country_flag:
+            try:
+                return format_html(
+                    '<img src="{}" style="max-height: 50px; max-width: 80px;" />',
+                    obj.country_flag.url
+                )
+            except:
+                return "No flag available"
+        return "No flag"
+    flag_preview.short_description = 'Flag Preview'
+    
+    @admin.action(description='Mark selected traders as active')
+    def mark_as_active(self, request, queryset):
+        updated = queryset.update(is_active=True)
+        self.message_user(request, f'{updated} trader(s) marked as active.')
+    
+    @admin.action(description='Mark selected traders as inactive')
+    def mark_as_inactive(self, request, queryset):
+        updated = queryset.update(is_active=False)
+        self.message_user(request, f'{updated} trader(s) marked as inactive.')
+
+
+@admin.register(TraderPortfolio)
+class TraderPortfolioAdmin(admin.ModelAdmin):
+    """Admin configuration for TraderPortfolio model"""
+    
+    list_display = [
+        'trader',
+        'market',
+        'direction',
+        'invested',
+        'profit_loss_display',
+        'value',
+        'is_active',
+        'opened_at'
+    ]
+    
+    list_filter = [
+        'direction',
+        'is_active',
+        'opened_at',
+        'trader__name'
+    ]
+    
+    search_fields = [
+        'trader__name',
+        'trader__username',
+        'market'
+    ]
+    
+    list_editable = [
+        'is_active'
+    ]
+    
+    readonly_fields = [
+        'opened_at'
+    ]
+    
+    fieldsets = (
+        ('Position Details', {
+            'fields': (
+                'trader',
+                'market',
+                'direction',
+                'is_active'
+            )
+        }),
+        ('Financial Data', {
+            'fields': (
+                'invested',
+                'profit_loss',
+                'value'
+            )
+        }),
+        ('Timestamp', {
+            'fields': (
+                'opened_at',
+            )
+        })
+    )
+    
+    ordering = ['-opened_at']
+    
+    date_hierarchy = 'opened_at'
+    
+    actions = ['close_positions', 'open_positions']
+    
+    def profit_loss_display(self, obj):
+        """Display profit/loss with color coding"""
+        color = "green" if obj.profit_loss >= 0 else "red"
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{:.2f}%</span>',
+            color,
+            obj.profit_loss
+        )
+    profit_loss_display.short_description = 'Profit/Loss %'
+    
+    def get_queryset(self, request):
+        """Optimize queryset with select_related"""
+        qs = super().get_queryset(request)
+        return qs.select_related('trader')
+    
+    @admin.action(description='Close selected positions')
+    def close_positions(self, request, queryset):
+        updated = queryset.update(is_active=False)
+        self.message_user(request, f'{updated} position(s) closed.')
+    
+    @admin.action(description='Open selected positions')
+    def open_positions(self, request, queryset):
+        updated = queryset.update(is_active=True)
+        self.message_user(request, f'{updated} position(s) opened.')
+
+
+# IMPORTANT: Remove these lines from your admin.py:
 
 
 

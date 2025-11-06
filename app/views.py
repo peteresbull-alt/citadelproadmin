@@ -20,7 +20,11 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from django.utils.crypto import get_random_string
 
-from django.db.models import Sum, Q
+
+
+from django.db.models import Sum, Q, Count
+
+from django.db import models
 
 from .serializers import (
     TicketSerializer, 
@@ -117,6 +121,7 @@ def dashboard_data(request):
         'profit': float(user.profit),
         'current_loyalty_status': user.current_loyalty_status,
         'next_loyalty_status': user.next_loyalty_status,
+        'next_amount_to_upgrade': user.next_amount_to_upgrade,
         'has_submitted_kyc': user.has_submitted_kyc,
         'is_verified': user.is_verified,
         'date_joined': user.date_joined.isoformat(),
@@ -232,11 +237,16 @@ def validate_token(request):
     except Token.DoesNotExist:
         return Response({"valid": False}, status=status.HTTP_401_UNAUTHORIZED)
 
+
+
+
+# Update the register_user function to handle referral codes
+# Update the register_user function to handle referral codes
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def register_user(request):
     """
-    Functional view to register a new user with Django password validation
+    Enhanced registration with referral tracking
     """
     email = request.data.get("email")
     password = request.data.get("password")
@@ -247,8 +257,7 @@ def register_user(request):
     city = request.data.get("city", "")
     phone = request.data.get("phone", "")
     currency = request.data.get("currency", "")
-
-    print("User data: ", request.data)
+    referral_code = request.data.get("referral_code", "").strip().upper()
 
     if not email or not password:
         return Response(
@@ -262,16 +271,27 @@ def register_user(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Run Django’s password validators
+    # Run Django's password validators
     try:
         validate_password(password)
     except DjangoValidationError as e:
         return Response(
-            {"error": e.messages},  # returns a list of validation messages
+            {"error": e.messages},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Create user if password is valid
+    # Validate referral code if provided
+    referrer = None
+    if referral_code:
+        try:
+            referrer = User.objects.get(referral_code=referral_code)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Invalid referral code"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    # Create user
     user = User.objects.create_user(
         email=email,
         password=password,
@@ -281,7 +301,8 @@ def register_user(request):
         region=region,
         city=city,
         phone=phone,
-        currency=currency
+        currency=currency,
+        referred_by=referrer  # Link to referrer
     )
 
     token, _ = Token.objects.get_or_create(user=user)
@@ -294,11 +315,14 @@ def register_user(request):
                 "email": user.email,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
+                "referral_code": user.referral_code,
             },
             "token": token.key,
         },
         status=status.HTTP_201_CREATED,
     )
+
+
 
 
 @api_view(["POST"])
@@ -2977,7 +3001,186 @@ def user_signal_balance(request):
 
 
 
+# REFERRAL SYSTEM VIEWS
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def get_referral_info(request):
+    """
+    GET: Get referral information for authenticated user
+    Returns: referral code, link, total referrals, and total earnings
+    """
+    user = request.user
+    
+    # Get frontend URL from request header or settings
+    # Frontend should send 'X-Frontend-URL' header, or use settings.FRONTEND_URL
+    frontend_url = request.headers.get('X-Frontend-URL')
+    print("FRONTEND URL: ", frontend_url)
+    if not frontend_url:
+        # Fallback to settings
+        from django.conf import settings
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+    
+    # Remove trailing slash if present
+    frontend_url = frontend_url.rstrip('/')
+    
+    # Build referral link pointing to frontend
+    referral_link = f"{frontend_url}/register?ref={user.referral_code}"
+    
+    # Count total referrals
+    total_referrals = User.objects.filter(referred_by=user).count()
+    
+    # Calculate total earnings from referrals
+    total_earnings = user.referral_bonus_earned or Decimal('0.00')
+    
+    return Response({
+        "success": True,
+        "referral_data": {
+            "referral_code": user.referral_code,
+            "referral_link": referral_link,
+            "total_referrals": total_referrals,
+            "total_earnings": str(total_earnings),
+            "referral_bonus_rate": 10,  # 10% bonus rate
+        }
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def get_referral_list(request):
+    """
+    GET: Get list of users referred by authenticated user
+    Returns: List of referred users with their status
+    """
+    user = request.user
+    
+    # Get all users referred by this user
+    referrals = User.objects.filter(referred_by=user).order_by('-date_joined')
+    
+    referral_list = []
+    for referral in referrals:
+        # Check if user has made a deposit
+        has_deposited = Transaction.objects.filter(
+            user=referral,
+            transaction_type='deposit',
+            status='completed'
+        ).exists()
+        
+        # Calculate bonus earned from this referral
+        if has_deposited:
+            # Get first deposit amount
+            first_deposit = Transaction.objects.filter(
+                user=referral,
+                transaction_type='deposit',
+                status='completed'
+            ).order_by('created_at').first()
+            
+            if first_deposit:
+                bonus_earned = first_deposit.amount * Decimal('0.10')  # 10% bonus
+            else:
+                bonus_earned = Decimal('0.00')
+        else:
+            bonus_earned = Decimal('0.00')
+        
+        referral_list.append({
+            "id": referral.id,
+            "email": referral.email,
+            "first_name": referral.first_name or "",
+            "last_name": referral.last_name or "",
+            "date_joined": referral.date_joined.isoformat(),
+            "has_deposited": has_deposited,
+            "bonus_earned": str(bonus_earned),
+        })
+    
+    return Response({
+        "success": True,
+        "referrals": referral_list,
+        "count": len(referral_list)
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def validate_referral_code(request):
+    """
+    GET: Validate a referral code
+    Query params: code
+    Returns: Whether the code is valid
+    """
+    code = request.GET.get('code', '').strip().upper()
+    
+    if not code:
+        return Response({
+            "success": False,
+            "valid": False,
+            "error": "Referral code is required"
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Check if code exists
+    try:
+        referrer = User.objects.get(referral_code=code)
+        return Response({
+            "success": True,
+            "valid": True,
+            "referrer": {
+                "name": f"{referrer.first_name} {referrer.last_name}".strip() or referrer.email,
+                "code": code
+            }
+        }, status=status.HTTP_200_OK)
+    except User.DoesNotExist:
+        return Response({
+            "success": False,
+            "valid": False,
+            "error": "Invalid referral code"
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def get_referral_earnings_history(request):
+    """
+    GET: Get detailed referral earnings history
+    Returns: Breakdown of earnings from each referral
+    """
+    user = request.user
+    
+    earnings_history = []
+    
+    # Get all referred users who have deposited
+    referrals = User.objects.filter(referred_by=user)
+    
+    for referral in referrals:
+        # Get first completed deposit
+        first_deposit = Transaction.objects.filter(
+            user=referral,
+            transaction_type='deposit',
+            status='completed'
+        ).order_by('created_at').first()
+        
+        if first_deposit:
+            bonus_amount = first_deposit.amount * Decimal('0.10')
+            earnings_history.append({
+                "referral_name": f"{referral.first_name} {referral.last_name}".strip() or referral.email,
+                "referral_email": referral.email,
+                "deposit_amount": str(first_deposit.amount),
+                "bonus_earned": str(bonus_amount),
+                "deposit_date": first_deposit.created_at.isoformat(),
+                "status": "completed"
+            })
+    
+    total_earnings = sum(
+        Decimal(item['bonus_earned']) for item in earnings_history
+    )
+    
+    return Response({
+        "success": True,
+        "earnings_history": earnings_history,
+        "total_earnings": str(total_earnings),
+        "count": len(earnings_history)
+    }, status=status.HTTP_200_OK)
 
 
 
