@@ -727,10 +727,13 @@ class TraderPortfolioAdmin(admin.ModelAdmin):
     def profit_loss_display(self, obj):
         """Display profit/loss with color coding"""
         color = "green" if obj.profit_loss >= 0 else "red"
+        # Format the number FIRST into a string
+        formatted_value = "{:.2f}%".format(float(obj.profit_loss))
+        # Then pass the formatted string to format_html
         return format_html(
-            '<span style="color: {}; font-weight: bold;">{:.2f}%</span>',
+            '<span style="color: {}; font-weight: bold;">{}</span>',
             color,
-            obj.profit_loss
+            formatted_value
         )
     profit_loss_display.short_description = 'Profit/Loss %'
     
