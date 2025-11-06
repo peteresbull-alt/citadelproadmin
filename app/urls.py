@@ -65,6 +65,7 @@ from .views import(
     user_stock_positions,
     buy_stock,
     sell_stock,
+    get_trade_history,
 
 
     # Connect Wallet
@@ -180,6 +181,8 @@ urlpatterns = [
     
     # This generic route MUST be LAST among stock routes
     path("stocks/<str:symbol>/", stock_detail, name="stock-detail"),
+
+    path("trades/history/", get_trade_history, name="trade-history"),
 
     # Wallet Connection endpoints
     path("wallets/available-types/", get_available_wallet_types, name="available-wallet-types"),

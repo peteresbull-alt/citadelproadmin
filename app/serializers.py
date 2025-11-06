@@ -10,6 +10,7 @@ from .models import (
     Stock,
     WalletConnection,
     Signal, UserSignalPurchase,
+    TradeHistory,
 )
 
 
@@ -301,6 +302,41 @@ class UserStockPositionSerializer(serializers.ModelSerializer):
     
     def get_profit_loss_percent(self, obj):
         return str(obj.profit_loss_percent)
+
+
+
+
+class TradeHistorySerializer(serializers.ModelSerializer):
+    stock = StockBasicSerializer(read_only=True)
+    formatted_total = serializers.SerializerMethodField()
+    formatted_profit_loss = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = TradeHistory
+        fields = [
+            'id',
+            'stock',
+            'trade_type',
+            'shares',
+            'price_per_share',
+            'total_amount',
+            'formatted_total',
+            'profit_loss',
+            'formatted_profit_loss',
+            'reference',
+            'notes',
+            'executed_at'
+        ]
+    
+    def get_formatted_total(self, obj):
+        return f"${obj.total_amount:,.2f}"
+    
+    def get_formatted_profit_loss(self, obj):
+        if obj.profit_loss is not None:
+            sign = "+" if obj.profit_loss >= 0 else ""
+            return f"{sign}${obj.profit_loss:,.2f}"
+        return None
+
 
 
 class WalletConnectionSerializer(serializers.ModelSerializer):

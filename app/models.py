@@ -1071,7 +1071,50 @@ class WalletConnection(models.Model):
         super().save(*args, **kwargs)
 
 
-
+class TradeHistory(models.Model):
+    """Track all stock trades (buy/sell)"""
+    
+    TRADE_TYPES = [
+        ('buy', 'Buy'),
+        ('sell', 'Sell'),
+    ]
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='trades'
+    )
+    stock = models.ForeignKey(
+        Stock,
+        on_delete=models.CASCADE,
+        related_name='trades'
+    )
+    trade_type = models.CharField(max_length=10, choices=TRADE_TYPES)
+    shares = models.DecimalField(max_digits=20, decimal_places=8)
+    price_per_share = models.DecimalField(max_digits=12, decimal_places=2)
+    total_amount = models.DecimalField(max_digits=20, decimal_places=2)
+    profit_loss = models.DecimalField(
+        max_digits=20, 
+        decimal_places=2, 
+        null=True, 
+        blank=True,
+        help_text="Only for sell orders"
+    )
+    reference = models.CharField(max_length=100, unique=True)
+    notes = models.TextField(blank=True, null=True)
+    executed_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-executed_at']
+        verbose_name = 'Trade History'
+        verbose_name_plural = 'Trade Histories'
+        indexes = [
+            models.Index(fields=['user', '-executed_at']),
+            models.Index(fields=['stock', '-executed_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.trade_type.upper()} {self.shares} {self.stock.symbol}"
 
 
 # SIGNALS

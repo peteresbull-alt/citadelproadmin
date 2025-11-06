@@ -41,6 +41,7 @@ from .serializers import (
     StockSerializer,
     StockListSerializer,
     UserStockPositionSerializer,
+    TradeHistorySerializer,
 
     WalletConnectionSerializer,
     WalletConnectionCreateSerializer,
@@ -68,6 +69,7 @@ from .models import (
     TraderPortfolio,
     Stock, 
     UserStockPosition,
+    TradeHistory,
     WalletConnection,
 
     Signal, 
@@ -2077,6 +2079,18 @@ def buy_stock(request):
         description=f"Bought {shares} shares of {stock.symbol} @ ${stock.price}",
         status="completed"
     )
+
+    # After successful buy
+    TradeHistory.objects.create(
+        user=user,
+        stock=stock,
+        trade_type='buy',
+        shares=shares,
+        price_per_share=stock.price,
+        total_amount=total_cost,
+        reference=reference,
+        notes=f"Market buy order"
+    )
     
     return Response({
         "success": True,
@@ -2222,6 +2236,19 @@ def sell_stock(request):
         description=f"Sold {shares} shares of {stock.symbol} @ ${stock.price} (P/L: ${float(actual_profit_loss):.2f})",
         status="completed"
     )
+
+    # After successful sell
+    TradeHistory.objects.create(
+        user=user,
+        stock=stock,
+        trade_type='sell',
+        shares=shares,
+        price_per_share=stock.price,
+        total_amount=sale_value,
+        profit_loss=actual_profit_loss,
+        reference=reference,
+        notes=f"Market sell order"
+    )
     
     return Response({
         "success": True,
@@ -2231,6 +2258,70 @@ def sell_stock(request):
         "new_balance": str(user.balance),
         "admin_profit_used": position.use_admin_profit
     }, status=status.HTTP_200_OK)
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def get_trade_history(request):
+    """
+    GET: Get trading history for authenticated user
+    Query params:
+    - trade_type: Filter by buy/sell (optional)
+    - stock_symbol: Filter by stock symbol (optional)
+    - limit: Number of trades to return (default: 50)
+    """
+    # Start with base queryset
+    trades = TradeHistory.objects.filter(user=request.user)
+    
+    # Filter by trade type
+    trade_type = request.GET.get('trade_type')
+    if trade_type and trade_type in ['buy', 'sell']:
+        trades = trades.filter(trade_type=trade_type)
+    
+    # Filter by stock symbol
+    stock_symbol = request.GET.get('stock_symbol')
+    if stock_symbol:
+        trades = trades.filter(stock__symbol=stock_symbol.upper())
+    
+    # IMPORTANT: Calculate summary stats BEFORE slicing
+    total_trades = trades.count()
+    buy_trades = trades.filter(trade_type='buy').count()
+    sell_trades = trades.filter(trade_type='sell').count()
+    
+    total_profit_loss = trades.filter(
+        trade_type='sell',
+        profit_loss__isnull=False
+    ).aggregate(
+        total=Sum('profit_loss')
+    )['total'] or Decimal('0.00')
+    
+    # NOW apply limit and serialize
+    limit = request.GET.get('limit', 50)
+    try:
+        limit = int(limit)
+    except ValueError:
+        limit = 50
+    
+    # Slice the queryset for pagination
+    trades_limited = trades[:limit]
+    
+    # Serialize the limited trades
+    serializer = TradeHistorySerializer(trades_limited, many=True)
+    
+    return Response({
+        "success": True,
+        "trades": serializer.data,
+        "summary": {
+            "total_trades": total_trades,
+            "buy_orders": buy_trades,
+            "sell_orders": sell_trades,
+            "total_profit_loss": str(total_profit_loss),
+        }
+    }, status=status.HTTP_200_OK)
+
+
 
 # Connect Wallet
 
