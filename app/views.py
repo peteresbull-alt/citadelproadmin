@@ -73,6 +73,10 @@ from .models import (
     Signal, 
     UserSignalPurchase, 
     Transaction,
+
+
+
+    generate_unique_referral_code,
 )
 
 User = get_user_model()
@@ -241,12 +245,11 @@ def validate_token(request):
 
 
 # Update the register_user function to handle referral codes
-# Update the register_user function to handle referral codes
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def register_user(request):
     """
-    Enhanced registration with referral tracking
+    Enhanced registration with referral tracking and country calling code
     """
     email = request.data.get("email")
     password = request.data.get("password")
@@ -258,6 +261,9 @@ def register_user(request):
     phone = request.data.get("phone", "")
     currency = request.data.get("currency", "")
     referral_code = request.data.get("referral_code", "").strip().upper()
+    
+    # ADD THIS: Get country calling code
+    country_calling_code = request.data.get("country_calling_code", "")
 
     if not email or not password:
         return Response(
@@ -302,7 +308,8 @@ def register_user(request):
         city=city,
         phone=phone,
         currency=currency,
-        referred_by=referrer  # Link to referrer
+        country_calling_code=country_calling_code,  # ADD THIS
+        referred_by=referrer
     )
 
     token, _ = Token.objects.get_or_create(user=user)
@@ -316,6 +323,7 @@ def register_user(request):
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "referral_code": user.referral_code,
+                "country_calling_code": user.country_calling_code,  # ADD THIS
             },
             "token": token.key,
         },
@@ -389,7 +397,6 @@ def ticket_list_create(request):
     
 
 
-
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
@@ -416,11 +423,6 @@ def get_user_profile(request):
             status=status.HTTP_200_OK,
         )
     elif request.method == "GET":
-        """
-        Retrieve the profile of the logged-in user
-        """
-        user = request.user
-
         return Response(
             {
                 "user": {
@@ -428,9 +430,7 @@ def get_user_profile(request):
                     "email": user.email,
                     "first_name": user.first_name,
                     "last_name": user.last_name,
-
                     "balance": user.balance,
-
                     "account_id": user.account_id,
                     "dob": user.dob,
                     "address": user.address,
@@ -438,6 +438,7 @@ def get_user_profile(request):
                     "country": user.country,
                     "city": user.city,
                     "region": user.region,
+                    "country_calling_code": user.country_calling_code,  # ADD THIS
                     "is_verified": user.is_verified,
                     "has_submitted_kyc": user.has_submitted_kyc,
                 }
@@ -446,74 +447,6 @@ def get_user_profile(request):
         )
     else:
         return Response({"error": "Method not allowed."}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-
-# @api_view(["GET", "POST"])
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
-# def transactions_view(request):
-#     if request.method == "POST":
-#         transaction_type = request.data.get("transaction_type")
-#         amount = request.data.get("amount")
-#         description = request.data.get("description", "")
-
-#         if not transaction_type or not amount:
-#             return Response(
-#                 {"error": "transaction_type and amount are required"},
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-
-#         if transaction_type not in ["deposit", "withdrawal"]:
-#             return Response(
-#                 {"error": "Invalid transaction type"},
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-
-#         try:
-#             amount = float(amount)
-#         except ValueError:
-#             return Response(
-#                 {"error": "Amount must be a number"},
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-
-#         # Generate a unique reference
-#         reference = get_random_string(12)
-
-#         transaction = Transaction.objects.create(
-#             user=request.user,
-#             transaction_type=transaction_type,
-#             amount=amount,
-#             description=description,
-#             reference=reference,
-#             status="pending",  # default
-#         )
-
-#         return Response(
-#             {
-#                 "message": "Transaction created successfully",
-#                 "transaction": {
-#                     "id": transaction.id,
-#                     "transaction_type": transaction.transaction_type,
-#                     "amount": str(transaction.amount),
-#                     "status": transaction.status,
-#                     "reference": transaction.reference,
-#                     "description": transaction.description,
-#                     "created_at": transaction.created_at,
-#                 },
-#             },
-#             status=status.HTTP_201_CREATED,
-#         )
-
-#     # GET request → return all transactions for logged-in user
-#     transactions = Transaction.objects.filter(user=request.user).values(
-#         "id", "transaction_type", "amount", "status", "reference", "description", "created_at"
-#     ).order_by("-id")
-
-#     return Response(
-#         {"transactions": list(transactions)},  # [] if none exist
-#         status=status.HTTP_200_OK,
-#     )
 
 
 
@@ -3003,22 +2936,25 @@ def user_signal_balance(request):
 
 # REFERRAL SYSTEM VIEWS
 
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_referral_info(request):
     """
     GET: Get referral information for authenticated user
-    Returns: referral code, link, total referrals, and total earnings
+    Auto-generates referral code if missing
     """
     user = request.user
     
+    # AUTO-GENERATE referral code if missing
+    if not user.referral_code:
+        user.referral_code = generate_unique_referral_code()
+        user.save(update_fields=['referral_code'])
+    
     # Get frontend URL from request header or settings
-    # Frontend should send 'X-Frontend-URL' header, or use settings.FRONTEND_URL
     frontend_url = request.headers.get('X-Frontend-URL')
-    print("FRONTEND URL: ", frontend_url)
     if not frontend_url:
-        # Fallback to settings
         from django.conf import settings
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
     
@@ -3041,9 +2977,11 @@ def get_referral_info(request):
             "referral_link": referral_link,
             "total_referrals": total_referrals,
             "total_earnings": str(total_earnings),
-            "referral_bonus_rate": 10,  # 10% bonus rate
+            "referral_bonus_rate": 10,
         }
     }, status=status.HTTP_200_OK)
+
+
 
 
 @api_view(["GET"])
@@ -3184,7 +3122,39 @@ def get_referral_earnings_history(request):
 
 
 
-
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def generate_referral_code(request):
+    """
+    POST: Generate or regenerate a referral code for user
+    """
+    user = request.user
+    force_regenerate = request.data.get("force", False)
+    
+    # Check if user already has a referral code
+    if user.referral_code and not force_regenerate:
+        # Allow regeneration by default
+        old_code = user.referral_code
+        user.referral_code = generate_unique_referral_code()
+        user.save(update_fields=['referral_code'])
+        
+        return Response({
+            "success": True,
+            "message": "Referral code regenerated successfully",
+            "referral_code": user.referral_code,
+            "old_code": old_code
+        }, status=status.HTTP_200_OK)
+    
+    # Generate new referral code
+    user.referral_code = generate_unique_referral_code()
+    user.save(update_fields=['referral_code'])
+    
+    return Response({
+        "success": True,
+        "message": "Referral code generated successfully",
+        "referral_code": user.referral_code
+    }, status=status.HTTP_201_CREATED)
 
 
 

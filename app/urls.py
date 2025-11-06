@@ -93,6 +93,7 @@ from .views import(
     get_referral_list,
     validate_referral_code,
     get_referral_earnings_history,
+    generate_referral_code,
 
 )
 
@@ -205,6 +206,7 @@ urlpatterns = [
     path('referral/list/', get_referral_list, name='get_referral_list'),
     path('referral/validate/', validate_referral_code, name='validate_referral_code'),
     path('referral/earnings/', get_referral_earnings_history, name='get_referral_earnings_history'),
+    path('referral/generate/', generate_referral_code, name='generate_referral_code'),
 
 ]
 

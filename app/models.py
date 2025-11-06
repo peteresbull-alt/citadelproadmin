@@ -86,6 +86,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField(max_length=20, blank=True, null=True)
     currency = models.CharField(max_length=10, blank=True, null=True)
 
+    # Country Code
+    country_calling_code = models.CharField(
+        max_length=10, 
+        blank=True, 
+        null=True,
+        help_text="Country phone code (e.g., +1, +234)"
+    )
+
     # User Balances
     account_id = models.CharField(max_length=10, blank=True, null=True)
     balance = models.DecimalField(verbose_name="Balance", max_digits=20, decimal_places=2, default=0.00, help_text="This is a monetary value.")
