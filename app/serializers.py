@@ -263,55 +263,44 @@ class StockListSerializer(serializers.ModelSerializer):
         ]
 
 
+# In serializers.py
+
+class StockBasicSerializer(serializers.ModelSerializer):
+    """Basic stock info for nested serialization"""
+    class Meta:
+        model = Stock
+        fields = ['id', 'symbol', 'name', 'price', 'logo_url']
+
+
 class UserStockPositionSerializer(serializers.ModelSerializer):
-    """Serializer for UserStockPosition model"""
-    stock_symbol = serializers.CharField(source='stock.symbol', read_only=True)
-    stock_name = serializers.CharField(source='stock.name', read_only=True)
-    stock_logo = serializers.CharField(source='stock.logo_url', read_only=True)
-    current_price = serializers.DecimalField(
-        source='stock.price',
-        max_digits=12,
-        decimal_places=2,
-        read_only=True
-    )
-    current_value = serializers.DecimalField(
-        max_digits=15,
-        decimal_places=2,
-        read_only=True
-    )
-    profit_loss = serializers.DecimalField(
-        max_digits=15,
-        decimal_places=2,
-        read_only=True
-    )
-    profit_loss_percent = serializers.DecimalField(
-        max_digits=8,
-        decimal_places=2,
-        read_only=True
-    )
+    stock = StockBasicSerializer(read_only=True)
+    current_value = serializers.SerializerMethodField()
+    profit_loss = serializers.SerializerMethodField()
+    profit_loss_percent = serializers.SerializerMethodField()
     
     class Meta:
         model = UserStockPosition
         fields = [
-            'id',
-            'stock',
-            'stock_symbol',
-            'stock_name',
-            'stock_logo',
-            'shares',
-            'average_buy_price',
+            'id', 
+            'stock', 
+            'shares', 
+            'average_buy_price', 
             'total_invested',
-            'current_price',
             'current_value',
             'profit_loss',
             'profit_loss_percent',
             'opened_at',
-            'is_active',
-            'closed_at'
+            'is_active'
         ]
-        read_only_fields = ['id', 'opened_at', 'closed_at']
-
-
+    
+    def get_current_value(self, obj):
+        return str(obj.current_value)
+    
+    def get_profit_loss(self, obj):
+        return str(obj.profit_loss)
+    
+    def get_profit_loss_percent(self, obj):
+        return str(obj.profit_loss_percent)
 
 
 class WalletConnectionSerializer(serializers.ModelSerializer):

@@ -1927,7 +1927,6 @@ def stock_sectors(request):
         "sectors": list(sectors)
     }, status=status.HTTP_200_OK)
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
@@ -1946,30 +1945,33 @@ def user_stock_positions(request):
     
     serializer = UserStockPositionSerializer(positions, many=True)
     
-    # Calculate totals
-    total_invested = sum(
-        float(p.total_invested) for p in positions if p.is_active
-    )
-    total_current_value = sum(
-        p.current_value for p in positions if p.is_active
-    )
+    # Calculate totals - FIX: Ensure all values are Decimal
+    total_invested = Decimal('0.00')
+    total_current_value = Decimal('0.00')
+    
+    for p in positions:
+        if p.is_active:
+            total_invested += Decimal(str(p.total_invested))
+            total_current_value += Decimal(str(p.current_value))
+    
     total_profit_loss = total_current_value - total_invested
     total_profit_loss_percent = (
-        (total_profit_loss / total_invested * 100) if total_invested > 0 else 0
+        (total_profit_loss / total_invested * 100) if total_invested > 0 else Decimal('0.00')
     )
     
     return Response({
         "success": True,
         "positions": serializer.data,
         "summary": {
-            "total_invested": f"{total_invested:.2f}",
-            "total_current_value": f"{total_current_value:.2f}",
-            "total_profit_loss": f"{total_profit_loss:.2f}",
-            "total_profit_loss_percent": f"{total_profit_loss_percent:.2f}"
+            "total_invested": str(total_invested),
+            "total_current_value": str(total_current_value),
+            "total_profit_loss": str(total_profit_loss),
+            "total_profit_loss_percent": str(total_profit_loss_percent)
         }
     }, status=status.HTTP_200_OK)
 
 
+    
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
@@ -2164,8 +2166,26 @@ def sell_stock(request):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Calculate sale value
-    sale_value = shares * stock.price
+    # Calculate sale value and profit/loss
+    if position.use_admin_profit:
+        # Use admin-set profit/loss
+        total_admin_pl = position.admin_profit_loss
+        
+        if position.shares == shares:
+            # Selling all shares - use full admin P/L
+            actual_profit_loss = total_admin_pl
+            sale_value = position.total_invested + actual_profit_loss
+        else:
+            # Partial sale - proportional admin P/L
+            proportion = shares / position.shares
+            actual_profit_loss = total_admin_pl * proportion
+            cost_basis = position.total_invested * proportion
+            sale_value = cost_basis + actual_profit_loss
+    else:
+        # Calculate based on current market price
+        sale_value = shares * stock.price
+        cost_basis = shares * position.average_buy_price
+        actual_profit_loss = sale_value - cost_basis
     
     # Update position
     if position.shares == shares:
@@ -2177,17 +2197,20 @@ def sell_stock(request):
         # Partial sale
         remaining_shares = position.shares - shares
         proportion = remaining_shares / position.shares
+        
+        # Update shares and invested amount proportionally
         position.shares = remaining_shares
         position.total_invested = position.total_invested * proportion
+        
+        # If using admin profit, also update admin profit proportionally
+        if position.use_admin_profit:
+            position.admin_profit_loss = position.admin_profit_loss * proportion
+        
         position.save()
     
     # Add to balance
     user.balance += sale_value
     user.save()
-    
-    # Calculate profit/loss
-    cost_basis = (float(position.average_buy_price) * float(shares))
-    profit_loss = float(sale_value) - cost_basis
     
     # Create transaction record
     reference = f"SELL-{get_random_string(12).upper()}"
@@ -2196,7 +2219,7 @@ def sell_stock(request):
         transaction_type="deposit",  # Selling is a deposit to balance
         amount=sale_value,
         reference=reference,
-        description=f"Sold {shares} shares of {stock.symbol} @ ${stock.price} (P/L: ${profit_loss:.2f})",
+        description=f"Sold {shares} shares of {stock.symbol} @ ${stock.price} (P/L: ${float(actual_profit_loss):.2f})",
         status="completed"
     )
     
@@ -2204,12 +2227,10 @@ def sell_stock(request):
         "success": True,
         "message": f"Successfully sold {shares} shares of {stock.symbol}",
         "sale_value": str(sale_value),
-        "profit_loss": f"{profit_loss:.2f}",
-        "new_balance": str(user.balance)
+        "profit_loss": f"{float(actual_profit_loss):.2f}",
+        "new_balance": str(user.balance),
+        "admin_profit_used": position.use_admin_profit
     }, status=status.HTTP_200_OK)
-
-
-
 
 # Connect Wallet
 
@@ -3155,90 +3176,6 @@ def generate_referral_code(request):
         "message": "Referral code generated successfully",
         "referral_code": user.referral_code
     }, status=status.HTTP_201_CREATED)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

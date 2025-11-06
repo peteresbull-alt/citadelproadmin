@@ -276,14 +276,14 @@ class UserStockPositionAdmin(admin.ModelAdmin):
             ),
             'description': 'These are automatically calculated values for reference'
         }),
-        ('Admin Custom Profit/Loss', {
-            'fields': (
-                'use_admin_profit',
-                'admin_profit_loss',
-                'admin_profit_loss_percent',
-            ),
-            'description': 'Enable "Use admin profit" and set custom profit/loss values here'
-        }),
+        # ('Admin Custom Profit/Loss', {
+        #     'fields': (
+        #         'use_admin_profit',
+        #         'admin_profit_loss',
+        #         'admin_profit_loss_percent',
+        #     ),
+        #     'description': 'Enable "Use admin profit" and set custom profit/loss values here'
+        # }),
         ('Timestamps', {
             'fields': ('opened_at', 'closed_at'),
         }),
