@@ -8,7 +8,7 @@ from .models import (
     AdminWallet, 
     Trader, 
     # Asset,
-    TraderPortfolio,
+    # TraderPortfolio,
     Notification,
     Portfolio,
     News,
@@ -659,98 +659,98 @@ class TraderAdmin(admin.ModelAdmin):
         self.message_user(request, f'{updated} trader(s) marked as inactive.')
 
 
-@admin.register(TraderPortfolio)
-class TraderPortfolioAdmin(admin.ModelAdmin):
-    """Admin configuration for TraderPortfolio model"""
+# @admin.register(TraderPortfolio)
+# class TraderPortfolioAdmin(admin.ModelAdmin):
+#     """Admin configuration for TraderPortfolio model"""
     
-    list_display = [
-        'trader',
-        'market',
-        'direction',
-        'invested',
-        'profit_loss_display',
-        'value',
-        'is_active',
-        'opened_at'
-    ]
+#     list_display = [
+#         'trader',
+#         'market',
+#         'direction',
+#         'invested',
+#         'profit_loss_display',
+#         'value',
+#         'is_active',
+#         'opened_at'
+#     ]
     
-    list_filter = [
-        'direction',
-        'is_active',
-        'opened_at',
-        'trader__name'
-    ]
+#     list_filter = [
+#         'direction',
+#         'is_active',
+#         'opened_at',
+#         'trader__name'
+#     ]
     
-    search_fields = [
-        'trader__name',
-        'trader__username',
-        'market'
-    ]
+#     search_fields = [
+#         'trader__name',
+#         'trader__username',
+#         'market'
+#     ]
     
-    list_editable = [
-        'is_active'
-    ]
+#     list_editable = [
+#         'is_active'
+#     ]
     
-    readonly_fields = [
-        'opened_at'
-    ]
+#     readonly_fields = [
+#         'opened_at'
+#     ]
     
-    fieldsets = (
-        ('Position Details', {
-            'fields': (
-                'trader',
-                'market',
-                'direction',
-                'is_active'
-            )
-        }),
-        ('Financial Data', {
-            'fields': (
-                'invested',
-                'profit_loss',
-                'value'
-            )
-        }),
-        ('Timestamp', {
-            'fields': (
-                'opened_at',
-            )
-        })
-    )
+#     fieldsets = (
+#         ('Position Details', {
+#             'fields': (
+#                 'trader',
+#                 'market',
+#                 'direction',
+#                 'is_active'
+#             )
+#         }),
+#         ('Financial Data', {
+#             'fields': (
+#                 'invested',
+#                 'profit_loss',
+#                 'value'
+#             )
+#         }),
+#         ('Timestamp', {
+#             'fields': (
+#                 'opened_at',
+#             )
+#         })
+#     )
     
-    ordering = ['-opened_at']
+#     ordering = ['-opened_at']
     
-    date_hierarchy = 'opened_at'
+#     date_hierarchy = 'opened_at'
     
-    actions = ['close_positions', 'open_positions']
+#     actions = ['close_positions', 'open_positions']
     
-    def profit_loss_display(self, obj):
-        """Display profit/loss with color coding"""
-        color = "green" if obj.profit_loss >= 0 else "red"
-        # Format the number FIRST into a string
-        formatted_value = "{:.2f}%".format(float(obj.profit_loss))
-        # Then pass the formatted string to format_html
-        return format_html(
-            '<span style="color: {}; font-weight: bold;">{}</span>',
-            color,
-            formatted_value
-        )
-    profit_loss_display.short_description = 'Profit/Loss %'
+#     def profit_loss_display(self, obj):
+#         """Display profit/loss with color coding"""
+#         color = "green" if obj.profit_loss >= 0 else "red"
+#         # Format the number FIRST into a string
+#         formatted_value = "{:.2f}%".format(float(obj.profit_loss))
+#         # Then pass the formatted string to format_html
+#         return format_html(
+#             '<span style="color: {}; font-weight: bold;">{}</span>',
+#             color,
+#             formatted_value
+#         )
+#     profit_loss_display.short_description = 'Profit/Loss %'
     
-    def get_queryset(self, request):
-        """Optimize queryset with select_related"""
-        qs = super().get_queryset(request)
-        return qs.select_related('trader')
+#     def get_queryset(self, request):
+#         """Optimize queryset with select_related"""
+#         qs = super().get_queryset(request)
+#         return qs.select_related('trader')
     
-    @admin.action(description='Close selected positions')
-    def close_positions(self, request, queryset):
-        updated = queryset.update(is_active=False)
-        self.message_user(request, f'{updated} position(s) closed.')
+#     @admin.action(description='Close selected positions')
+#     def close_positions(self, request, queryset):
+#         updated = queryset.update(is_active=False)
+#         self.message_user(request, f'{updated} position(s) closed.')
     
-    @admin.action(description='Open selected positions')
-    def open_positions(self, request, queryset):
-        updated = queryset.update(is_active=True)
-        self.message_user(request, f'{updated} position(s) opened.')
+#     @admin.action(description='Open selected positions')
+#     def open_positions(self, request, queryset):
+#         updated = queryset.update(is_active=True)
+#         self.message_user(request, f'{updated} position(s) opened.')
 
 
 # IMPORTANT: Remove these lines from your admin.py:
