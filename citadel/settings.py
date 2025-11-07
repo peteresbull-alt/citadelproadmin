@@ -151,6 +151,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://citadelpro.netlify.app",
     "https://citadelprofront.vercel.app",
+    "https://www.citadelmarketspro.com",
 ]
 CORS_ALLOW_HEADERS = [
     'accept',
