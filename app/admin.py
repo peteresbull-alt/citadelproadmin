@@ -93,34 +93,34 @@ class CustomUserAdmin(UserAdmin):
     readonly_fields = ('date_joined', 'last_login', 'account_id')
 
 
-@admin.register(Transaction)
-class TransactionAdmin(admin.ModelAdmin):
-    """Admin configuration for Transaction model"""
+# @admin.register(Transaction)
+# class TransactionAdmin(admin.ModelAdmin):
+#     """Admin configuration for Transaction model"""
     
-    list_display = (
-        'reference', 'user', 'transaction_type', 
-        'amount', 'status', 'created_at'
-    )
-    list_filter = ('transaction_type', 'status', 'created_at')
-    search_fields = ('reference', 'user__email', 'description')
-    ordering = ('-created_at',)
-    readonly_fields = ('reference', 'created_at', 'updated_at')
+#     list_display = (
+#         'reference', 'user', 'transaction_type', 
+#         'amount', 'status', 'created_at', 'receipt',
+#     )
+#     list_filter = ('transaction_type', 'status', 'created_at')
+#     search_fields = ('reference', 'user__email', 'description')
+#     ordering = ('-created_at',)
+#     readonly_fields = ('reference', 'created_at', 'updated_at')
     
-    fieldsets = (
-        ('Transaction Details', {
-            'fields': (
-                'user', 'transaction_type', 'amount', 
-                'status', 'reference', 'description'
-            )
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at')
-        }),
-    )
+#     fieldsets = (
+#         ('Transaction Details', {
+#             'fields': (
+#                 'user', 'transaction_type', 'amount', 
+#                 'status', 'reference', 'description'
+#             )
+#         }),
+#         ('Timestamps', {
+#             'fields': ('created_at', 'updated_at')
+#         }),
+#     )
     
-    def has_add_permission(self, request):
-        """Allow admins to create transactions"""
-        return True
+#     def has_add_permission(self, request):
+#         """Allow admins to create transactions"""
+#         return True
 
 @admin.register(Portfolio)
 class PortfolioAdmin(admin.ModelAdmin):
@@ -149,7 +149,7 @@ class PortfolioAdmin(admin.ModelAdmin):
 
 
 
-# admin.site.register(Transaction)
+admin.site.register(Transaction)
 admin.site.register(PaymentMethod)
 admin.site.register(AdminWallet)
 

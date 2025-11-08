@@ -488,7 +488,7 @@ class Transaction(models.Model):
         folder="receipt",
         blank=True,
         null=True,
-        help_text="Here's the receipt for the transaction."
+        help_text="Here's the receipt for the transaction.",
     )
 
     
