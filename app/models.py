@@ -722,11 +722,11 @@ class Notification(models.Model):
         ('news', 'News'),
     ]
     
-    PRIORITY_CHOICES = [
-        ('low', 'Low'),
-        ('medium', 'Medium'),
-        ('high', 'High'),
-    ]
+    # PRIORITY_CHOICES = [
+    #     ('low', 'Low'),
+    #     ('medium', 'Medium'),
+    #     ('high', 'High'),
+    # ]
     
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -749,12 +749,12 @@ class Notification(models.Model):
     full_details = models.TextField(
         help_text="Full notification details/description"
     )
-    priority = models.CharField(
-        max_length=10,
-        choices=PRIORITY_CHOICES,
-        default='medium',
-        help_text="Notification priority level"
-    )
+    # priority = models.CharField(
+    #     max_length=10,
+    #     choices=PRIORITY_CHOICES,
+    #     default='medium',
+    #     help_text="Notification priority level"
+    # )
     metadata = models.JSONField(
         default=dict,
         blank=True,

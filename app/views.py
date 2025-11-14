@@ -1048,9 +1048,9 @@ def notification_list(request):
         notifications = notifications.filter(read=is_read)
     
     # Filter by priority
-    priority = request.GET.get("priority")
-    if priority:
-        notifications = notifications.filter(priority=priority)
+    # priority = request.GET.get("priority")
+    # if priority:
+    #     notifications = notifications.filter(priority=priority)
     
     serializer = NotificationSerializer(notifications, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
@@ -2753,7 +2753,7 @@ def submit_kyc(request):
             title="KYC Submitted Successfully",
             message="Your KYC documents have been submitted and are under review.",
             full_details="We will notify you once your documents have been verified. This typically takes 1-3 business days.",
-            priority="medium"
+            # priority="medium"
         )
 
         # At the end, if successful:
@@ -3076,7 +3076,7 @@ def purchase_signal(request):
             title="Signal Purchased Successfully",
             message=f"You have successfully purchased the {signal.name} trading signal.",
             full_details=f"Signal: {signal.name}\nAmount Paid: ${signal.price}\nReference: {reference}",
-            priority="medium"
+            # priority="medium"
         )
         
         return Response({
