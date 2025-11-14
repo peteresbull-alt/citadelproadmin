@@ -8,7 +8,7 @@ from .models import (
     AdminWallet, 
     Trader, 
     # Asset,
-    # TraderPortfolio,
+    TraderPortfolio,
     Notification,
     Portfolio,
     News,
@@ -18,6 +18,7 @@ from .models import (
     WalletConnection,
     
 )
+
 
 
 
@@ -492,20 +493,18 @@ class UserSignalPurchaseAdmin(admin.ModelAdmin):
     
     ordering = ['-purchased_at']
     
-    def has_add_permission(self, request):
-        # Prevent manual adding of purchases through admin
-        return False
+    # def has_add_permission(self, request):
+    #     # Prevent manual adding of purchases through admin
+    #     return False
     
-    def has_delete_permission(self, request, obj=None):
-        # Prevent deletion of purchase records
-        return False
+    # def has_delete_permission(self, request, obj=None):
+    #     # Prevent deletion of purchase records
+    #     return False
 
 
 # Add this to your admin.py file, replacing the basic registrations
 
-from django.contrib import admin
-from django.utils.html import format_html
-from .models import Trader, TraderPortfolio
+
 
 @admin.register(Trader)
 class TraderAdmin(admin.ModelAdmin):
