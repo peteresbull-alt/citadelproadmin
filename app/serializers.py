@@ -189,6 +189,8 @@ class TraderDetailSerializer(serializers.ModelSerializer):
             'expert_rating', 'return_ytd', 'return_2y', 'avg_score_7d',
             'profitable_weeks', 'total_trades_12m', 'avg_profit_percent',
             'avg_loss_percent',
+            # Wins and Losses
+            'total_wins', 'total_losses',
             # Complex data
             'performance_data', 'monthly_performance', 'frequently_traded',
             # Related

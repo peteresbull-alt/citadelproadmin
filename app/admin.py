@@ -591,6 +591,12 @@ class TraderAdmin(admin.ModelAdmin):
                 'profitable_weeks'
             )
         }),
+        ('Wins and Losses', {
+            'fields': (
+                'total_wins',
+                'total_losses',
+            )
+        }),
         ('Trading Details', {
             'fields': (
                 'total_trades_12m',
@@ -598,14 +604,14 @@ class TraderAdmin(admin.ModelAdmin):
                 'avg_loss_percent'
             )
         }),
-        ('JSON Data', {
-            'fields': (
-                'performance_data',
-                'monthly_performance',
-                'frequently_traded'
-            ),
-            'classes': ('collapse',)
-        }),
+        # ('JSON Data', {
+        #     'fields': (
+        #         'performance_data',
+        #         'monthly_performance',
+        #         'frequently_traded'
+        #     ),
+        #     'classes': ('collapse',)
+        # }),
         ('Timestamps', {
             'fields': (
                 'created_at',

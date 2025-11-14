@@ -367,6 +367,15 @@ class Trader(models.Model):
         default=0.00,
         help_text="Average loss percentage per trade"
     )
+
+    total_wins = models.PositiveIntegerField(
+        default=0,
+        help_text="Total number of winning trades"
+    )
+    total_losses = models.PositiveIntegerField(
+        default=0,
+        help_text="Total number of losing trades"
+    )
     
     # JSON fields for complex data
     performance_data = models.JSONField(
@@ -400,6 +409,14 @@ class Trader(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.country})"
+    
+    @property
+    def win_rate(self):
+        """Calculate win rate percentage"""
+        total = self.total_wins + self.total_losses
+        if total == 0:
+            return 0
+        return (self.total_wins / total) * 100
 
 
 class TraderPortfolio(models.Model):
