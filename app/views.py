@@ -81,6 +81,12 @@ from .models import (
     generate_unique_referral_code,
 )
 
+# Logger makes error show in vercel
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 User = get_user_model()
 
 
@@ -2535,9 +2541,46 @@ def submit_kyc(request):
     - id_back: Back image of ID (file)
     """
     user = request.user
+
+    # ADD LOGGING HERE - Right at the start
+    logger.info("=" * 50)
+    logger.info(f"KYC SUBMISSION ATTEMPT")
+    logger.info(f"User: {user.email} (ID: {user.id})")
+    logger.info(f"Has already submitted KYC: {user.has_submitted_kyc}")
+    logger.info("-" * 50)
+    logger.info(f"Request data keys: {list(request.data.keys())}")
+    logger.info(f"Request FILES keys: {list(request.FILES.keys())}")
+    logger.info("-" * 50)
     
+    
+    
+    # Extract data from request
+    dob = request.data.get("dob", "").strip()
+    phone = request.data.get("phone", "").strip()
+    address = request.data.get("address", "").strip()
+    postal_code = request.data.get("postal_code", "").strip()
+    city = request.data.get("city", "").strip()
+    region = request.data.get("region", "").strip()
+    id_type = request.data.get("id_type")
+
+
+    logger.info(f"DOB: '{dob}'")
+    logger.info(f"Phone: '{phone}' (length: {len(phone)})")
+    logger.info(f"Address: '{address}' (length: {len(address)})")
+    logger.info(f"Postal code: '{postal_code}'")
+    logger.info(f"City: '{city}'")
+    logger.info(f"Region: '{region}'")
+    logger.info(f"ID Type: '{id_type}'")
+    
+    # Get file uploads
+    id_front = request.FILES.get("id_front")
+    id_back = request.FILES.get("id_back")
+
+
+
     # Check if user has already submitted KYC
     if user.has_submitted_kyc:
+        logger.warning(f"User {user.email} tried to submit KYC again")
         return Response(
             {
                 "success": False,
@@ -2545,20 +2588,70 @@ def submit_kyc(request):
             },
             status=status.HTTP_400_BAD_REQUEST
         )
+
+
+    if id_front:
+        logger.info(f"ID Front: {id_front.name} ({id_front.size} bytes)")
+    else:
+        logger.warning("ID Front: MISSING")
     
-    # Extract data from request
-    dob = request.data.get("dob")
-    phone = request.data.get("phone")
-    address = request.data.get("address")
-    postal_code = request.data.get("postal_code")
-    city = request.data.get("city")
-    region = request.data.get("region")
-    id_type = request.data.get("id_type")
+    if id_back:
+        logger.info(f"ID Back: {id_back.name} ({id_back.size} bytes)")
+    else:
+        logger.warning("ID Back: MISSING")
     
-    # Get file uploads
-    id_front = request.FILES.get("id_front")
-    id_back = request.FILES.get("id_back")
+    logger.info("=" * 50)
+
+
+    # Detailed validation with specific error messages
+    if not dob:
+        logger.error("Validation failed: DOB missing")
+        return Response({"success": False, "error": "Date of birth is required"}, 
+                       status=status.HTTP_400_BAD_REQUEST)
     
+    if not phone or len(phone) < 10:
+        logger.error(f"Validation failed: Phone invalid ('{phone}'). Phone should be at least 10 digits.")
+        return Response({"success": False, "error": "Please enter a valid phone number (at least 10 digits)"}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    if not address or len(address) < 5:
+        logger.error(f"Validation failed: Address too short ('{address}')")
+        return Response({"success": False, "error": "Please enter a complete street address"}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    if not postal_code:
+        logger.error("Validation failed: Postal code missing")
+        return Response({"success": False, "error": "Postal code is required"}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    if not city:
+        logger.error("Validation failed: City missing")
+        return Response({"success": False, "error": "City is required"}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    if not region:
+        logger.error("Validation failed: Region missing")
+        return Response({"success": False, "error": "Region/State is required"}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    if not id_type:
+        logger.error("Validation failed: ID type missing")
+        return Response({"success": False, "error": "Please select an ID type"}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    if not id_front:
+        logger.error("Validation failed: ID front image missing")
+        return Response({"success": False, "error": "Please upload the front of your ID"}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    if not id_back:
+        logger.error("Validation failed: ID back image missing")
+        return Response({"success": False, "error": "Please upload the back of your ID"}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    
+
     # Validation
     if not all([dob, phone, address, postal_code, city, region, id_type]):
         return Response(
@@ -2582,13 +2675,26 @@ def submit_kyc(request):
     valid_id_types = ["passport", "driver_license", "national_id", "voter_card"]
     if id_type not in valid_id_types:
         return Response(
-            {
-                "success": False,
-                "error": "Invalid ID type selected"
-            },
+            {"success": False, "error": "Invalid ID type selected"},
             status=status.HTTP_400_BAD_REQUEST
         )
     
+    # Validate file sizes (5MB limit)
+    max_size = 5 * 1024 * 1024  # 5MB
+
+    if id_front.size > max_size:
+        return Response(
+            {"success": False, "error": "ID front image is too large. Maximum size is 5MB"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    if id_back.size > max_size:
+        return Response(
+            {"success": False, "error": "ID back image is too large. Maximum size is 5MB"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+
     # Validate date of birth format
     try:
         from datetime import datetime
@@ -2649,6 +2755,9 @@ def submit_kyc(request):
             full_details="We will notify you once your documents have been verified. This typically takes 1-3 business days.",
             priority="medium"
         )
+
+        # At the end, if successful:
+        logger.info(f"✅ KYC successfully submitted for user {user.email}")
         
         return Response(
             {
