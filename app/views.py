@@ -20,7 +20,8 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from django.utils.crypto import get_random_string
 
-
+from cloudinary.uploader import upload_image
+from cloudinary import CloudinaryImage
 
 from django.db.models import Sum, Q, Count
 
@@ -2521,14 +2522,15 @@ def get_available_wallet_types(request):
 
 # --------------------------- KYC -----------------------------------------------------------------
 # app/views.py file
+from cloudinary import CloudinaryImage
+import re
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
-@parser_classes([MultiPartParser, FormParser])
 def submit_kyc(request):
     """
-    POST: Submit KYC information
+    POST: Submit KYC information with Cloudinary URLs
     Expects:
     - dob: Date of birth (YYYY-MM-DD)
     - phone: Phone number
@@ -2537,22 +2539,18 @@ def submit_kyc(request):
     - city: City
     - region: Region/State
     - id_type: Type of ID (passport, driver_license, national_id, voter_card)
-    - id_front: Front image of ID (file)
-    - id_back: Back image of ID (file)
+    - id_front_url: Cloudinary URL of front ID image
+    - id_back_url: Cloudinary URL of back ID image
     """
     user = request.user
 
-    # ADD LOGGING HERE - Right at the start
     logger.info("=" * 50)
     logger.info(f"KYC SUBMISSION ATTEMPT")
     logger.info(f"User: {user.email} (ID: {user.id})")
     logger.info(f"Has already submitted KYC: {user.has_submitted_kyc}")
     logger.info("-" * 50)
-    logger.info(f"Request data keys: {list(request.data.keys())}")
-    logger.info(f"Request FILES keys: {list(request.FILES.keys())}")
+    logger.info(f"Request data: {request.data}")
     logger.info("-" * 50)
-    
-    
     
     # Extract data from request
     dob = request.data.get("dob", "").strip()
@@ -2562,7 +2560,10 @@ def submit_kyc(request):
     city = request.data.get("city", "").strip()
     region = request.data.get("region", "").strip()
     id_type = request.data.get("id_type")
-
+    
+    # Get Cloudinary URLs
+    id_front_url = request.data.get("id_front_url", "").strip()
+    id_back_url = request.data.get("id_back_url", "").strip()
 
     logger.info(f"DOB: '{dob}'")
     logger.info(f"Phone: '{phone}' (length: {len(phone)})")
@@ -2571,12 +2572,9 @@ def submit_kyc(request):
     logger.info(f"City: '{city}'")
     logger.info(f"Region: '{region}'")
     logger.info(f"ID Type: '{id_type}'")
-    
-    # Get file uploads
-    id_front = request.FILES.get("id_front")
-    id_back = request.FILES.get("id_back")
-
-
+    logger.info(f"ID Front URL: '{id_front_url}'")
+    logger.info(f"ID Back URL: '{id_back_url}'")
+    logger.info("=" * 50)
 
     # Check if user has already submitted KYC
     if user.has_submitted_kyc:
@@ -2589,28 +2587,14 @@ def submit_kyc(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-
-    if id_front:
-        logger.info(f"ID Front: {id_front.name} ({id_front.size} bytes)")
-    else:
-        logger.warning("ID Front: MISSING")
-    
-    if id_back:
-        logger.info(f"ID Back: {id_back.name} ({id_back.size} bytes)")
-    else:
-        logger.warning("ID Back: MISSING")
-    
-    logger.info("=" * 50)
-
-
-    # Detailed validation with specific error messages
+    # Detailed validation
     if not dob:
         logger.error("Validation failed: DOB missing")
         return Response({"success": False, "error": "Date of birth is required"}, 
                        status=status.HTTP_400_BAD_REQUEST)
     
     if not phone or len(phone) < 10:
-        logger.error(f"Validation failed: Phone invalid ('{phone}'). Phone should be at least 10 digits.")
+        logger.error(f"Validation failed: Phone invalid ('{phone}')")
         return Response({"success": False, "error": "Please enter a valid phone number (at least 10 digits)"}, 
                        status=status.HTTP_400_BAD_REQUEST)
     
@@ -2639,37 +2623,15 @@ def submit_kyc(request):
         return Response({"success": False, "error": "Please select an ID type"}, 
                        status=status.HTTP_400_BAD_REQUEST)
     
-    if not id_front:
-        logger.error("Validation failed: ID front image missing")
+    if not id_front_url:
+        logger.error("Validation failed: ID front URL missing")
         return Response({"success": False, "error": "Please upload the front of your ID"}, 
                        status=status.HTTP_400_BAD_REQUEST)
     
-    if not id_back:
-        logger.error("Validation failed: ID back image missing")
+    if not id_back_url:
+        logger.error("Validation failed: ID back URL missing")
         return Response({"success": False, "error": "Please upload the back of your ID"}, 
                        status=status.HTTP_400_BAD_REQUEST)
-    
-    
-    
-
-    # Validation
-    if not all([dob, phone, address, postal_code, city, region, id_type]):
-        return Response(
-            {
-                "success": False,
-                "error": "All fields are required"
-            },
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    if not id_front or not id_back:
-        return Response(
-            {
-                "success": False,
-                "error": "Both front and back ID images are required"
-            },
-            status=status.HTTP_400_BAD_REQUEST
-        )
     
     # Validate ID type
     valid_id_types = ["passport", "driver_license", "national_id", "voter_card"]
@@ -2679,29 +2641,32 @@ def submit_kyc(request):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Validate file sizes (5MB limit)
-    max_size = 5 * 1024 * 1024  # 5MB
+    # Validate Cloudinary URLs
+    if not id_front_url.startswith(('http://', 'https://')):
+        return Response(
+            {"success": False, "error": "Invalid front ID URL"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    if not id_back_url.startswith(('http://', 'https://')):
+        return Response(
+            {"success": False, "error": "Invalid back ID URL"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
-    if id_front.size > max_size:
+    # Validate that URLs are from Cloudinary
+    if 'cloudinary.com' not in id_front_url or 'cloudinary.com' not in id_back_url:
         return Response(
-            {"success": False, "error": "ID front image is too large. Maximum size is 5MB"},
+            {"success": False, "error": "Only Cloudinary URLs are accepted"},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
-    if id_back.size > max_size:
-        return Response(
-            {"success": False, "error": "ID back image is too large. Maximum size is 5MB"},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
 
     # Validate date of birth format
     try:
-        from datetime import datetime
+        from datetime import datetime, date
         dob_date = datetime.strptime(dob, "%Y-%m-%d").date()
         
         # Check if user is at least 18 years old
-        from datetime import date
         today = date.today()
         age = today.year - dob_date.year - ((today.month, today.day) < (dob_date.month, dob_date.day))
         
@@ -2732,6 +2697,59 @@ def submit_kyc(request):
             status=status.HTTP_400_BAD_REQUEST
         )
     
+    # Helper function to extract public_id from Cloudinary URL
+    def extract_public_id_from_url(url):
+        """
+        Extract public_id from Cloudinary URL
+        Example: https://res.cloudinary.com/demo/image/upload/v1234567890/kyc_documents/abc123.jpg
+        Returns: kyc_documents/abc123
+        """
+        try:
+            # Pattern to match Cloudinary URLs
+            # Matches: /upload/v{version}/{public_id}.{extension}
+            # Or: /upload/{public_id}.{extension}
+            pattern = r'/upload/(?:v\d+/)?(.+?)(?:\.[^.]+)?$'
+            match = re.search(pattern, url)
+            
+            if match:
+                public_id = match.group(1)
+                logger.info(f"Extracted public_id: {public_id}")
+                return public_id
+            else:
+                # Fallback: try to extract everything after /upload/
+                parts = url.split('/upload/')
+                if len(parts) > 1:
+                    # Remove version if present and file extension
+                    path = parts[1]
+                    # Remove version (v1234567890/)
+                    if path.startswith('v'):
+                        path_parts = path.split('/', 1)
+                        if len(path_parts) > 1:
+                            path = path_parts[1]
+                    # Remove file extension
+                    public_id = path.rsplit('.', 1)[0]
+                    logger.info(f"Extracted public_id (fallback): {public_id}")
+                    return public_id
+                
+                logger.error(f"Could not extract public_id from URL: {url}")
+                return None
+        except Exception as e:
+            logger.error(f"Error extracting public_id: {str(e)}")
+            return None
+    
+    # Extract public_ids from URLs
+    id_front_public_id = extract_public_id_from_url(id_front_url)
+    id_back_public_id = extract_public_id_from_url(id_back_url)
+    
+    if not id_front_public_id or not id_back_public_id:
+        return Response(
+            {
+                "success": False,
+                "error": "Invalid Cloudinary URL format"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
     # Update user profile with KYC information
     try:
         user.dob = dob_date
@@ -2741,10 +2759,17 @@ def submit_kyc(request):
         user.city = city
         user.region = region
         user.id_type = id_type
-        user.id_front = id_front
-        user.id_back = id_back
+        
+        # Store Cloudinary public_ids in CloudinaryField
+        # This creates proper CloudinaryImage objects
+        user.id_front = id_front_public_id
+        user.id_back = id_back_public_id
+        
         user.has_submitted_kyc = True
         user.save()
+        
+        logger.info(f"Saved id_front: {user.id_front}")
+        logger.info(f"Saved id_back: {user.id_back}")
         
         # Create a notification for KYC submission
         Notification.objects.create(
@@ -2753,11 +2778,20 @@ def submit_kyc(request):
             title="KYC Submitted Successfully",
             message="Your KYC documents have been submitted and are under review.",
             full_details="We will notify you once your documents have been verified. This typically takes 1-3 business days.",
-            # priority="medium"
         )
 
-        # At the end, if successful:
         logger.info(f"✅ KYC successfully submitted for user {user.email}")
+        
+        # Safely get URLs
+        try:
+            id_front_url_response = user.id_front.url if user.id_front else None
+        except:
+            id_front_url_response = id_front_url
+            
+        try:
+            id_back_url_response = user.id_back.url if user.id_back else None
+        except:
+            id_back_url_response = id_back_url
         
         return Response(
             {
@@ -2771,6 +2805,8 @@ def submit_kyc(request):
                     "region": user.region,
                     "postal_code": user.postal_code,
                     "id_type": user.id_type,
+                    "id_front_url": id_front_url_response,
+                    "id_back_url": id_back_url_response,
                     "has_submitted_kyc": user.has_submitted_kyc,
                     "is_verified": user.is_verified,
                 }
@@ -2779,6 +2815,9 @@ def submit_kyc(request):
         )
     
     except Exception as e:
+        logger.error(f"❌ KYC submission failed: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return Response(
             {
                 "success": False,
@@ -2786,6 +2825,510 @@ def submit_kyc(request):
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+    
+    
+# @api_view(["POST"])
+# @permission_classes([IsAuthenticated])
+# @authentication_classes([TokenAuthentication])
+# def submit_kyc(request):
+#     """
+#     POST: Submit KYC information with Cloudinary URLs
+#     Expects:
+#     - dob: Date of birth (YYYY-MM-DD)
+#     - phone: Phone number
+#     - address: Street address
+#     - postal_code: Postal/ZIP code
+#     - city: City
+#     - region: Region/State
+#     - id_type: Type of ID (passport, driver_license, national_id, voter_card)
+#     - id_front_url: Cloudinary URL of front ID image
+#     - id_back_url: Cloudinary URL of back ID image
+#     """
+#     user = request.user
+
+#     logger.info("=" * 50)
+#     logger.info(f"KYC SUBMISSION ATTEMPT")
+#     logger.info(f"User: {user.email} (ID: {user.id})")
+#     logger.info(f"Has already submitted KYC: {user.has_submitted_kyc}")
+#     logger.info("-" * 50)
+#     logger.info(f"Request data: {request.data}")
+#     logger.info("-" * 50)
+    
+#     # Extract data from request
+#     dob = request.data.get("dob", "").strip()
+#     phone = request.data.get("phone", "").strip()
+#     address = request.data.get("address", "").strip()
+#     postal_code = request.data.get("postal_code", "").strip()
+#     city = request.data.get("city", "").strip()
+#     region = request.data.get("region", "").strip()
+#     id_type = request.data.get("id_type")
+    
+#     # Get Cloudinary URLs
+#     id_front_url = request.data.get("id_front_url", "").strip()
+#     id_back_url = request.data.get("id_back_url", "").strip()
+
+#     logger.info(f"DOB: '{dob}'")
+#     logger.info(f"Phone: '{phone}' (length: {len(phone)})")
+#     logger.info(f"Address: '{address}' (length: {len(address)})")
+#     logger.info(f"Postal code: '{postal_code}'")
+#     logger.info(f"City: '{city}'")
+#     logger.info(f"Region: '{region}'")
+#     logger.info(f"ID Type: '{id_type}'")
+#     logger.info(f"ID Front URL: '{id_front_url}'")
+#     logger.info(f"ID Back URL: '{id_back_url}'")
+#     logger.info("=" * 50)
+
+#     # Check if user has already submitted KYC
+#     if user.has_submitted_kyc:
+#         logger.warning(f"User {user.email} tried to submit KYC again")
+#         return Response(
+#             {
+#                 "success": False,
+#                 "error": "You have already submitted your KYC documents. They are under review."
+#             },
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+
+#     # Detailed validation
+#     if not dob:
+#         logger.error("Validation failed: DOB missing")
+#         return Response({"success": False, "error": "Date of birth is required"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not phone or len(phone) < 10:
+#         logger.error(f"Validation failed: Phone invalid ('{phone}')")
+#         return Response({"success": False, "error": "Please enter a valid phone number (at least 10 digits)"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not address or len(address) < 5:
+#         logger.error(f"Validation failed: Address too short ('{address}')")
+#         return Response({"success": False, "error": "Please enter a complete street address"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not postal_code:
+#         logger.error("Validation failed: Postal code missing")
+#         return Response({"success": False, "error": "Postal code is required"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not city:
+#         logger.error("Validation failed: City missing")
+#         return Response({"success": False, "error": "City is required"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not region:
+#         logger.error("Validation failed: Region missing")
+#         return Response({"success": False, "error": "Region/State is required"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not id_type:
+#         logger.error("Validation failed: ID type missing")
+#         return Response({"success": False, "error": "Please select an ID type"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not id_front_url:
+#         logger.error("Validation failed: ID front URL missing")
+#         return Response({"success": False, "error": "Please upload the front of your ID"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not id_back_url:
+#         logger.error("Validation failed: ID back URL missing")
+#         return Response({"success": False, "error": "Please upload the back of your ID"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     # Validate ID type
+#     valid_id_types = ["passport", "driver_license", "national_id", "voter_card"]
+#     if id_type not in valid_id_types:
+#         return Response(
+#             {"success": False, "error": "Invalid ID type selected"},
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+    
+#     # Validate Cloudinary URLs
+#     if not id_front_url.startswith(('http://', 'https://')):
+#         return Response(
+#             {"success": False, "error": "Invalid front ID URL"},
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+    
+#     if not id_back_url.startswith(('http://', 'https://')):
+#         return Response(
+#             {"success": False, "error": "Invalid back ID URL"},
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+
+#     # Validate that URLs are from Cloudinary
+#     if 'cloudinary.com' not in id_front_url or 'cloudinary.com' not in id_back_url:
+#         return Response(
+#             {"success": False, "error": "Only Cloudinary URLs are accepted"},
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+
+#     # Validate date of birth format
+#     try:
+#         from datetime import datetime, date
+#         dob_date = datetime.strptime(dob, "%Y-%m-%d").date()
+        
+#         # Check if user is at least 18 years old
+#         today = date.today()
+#         age = today.year - dob_date.year - ((today.month, today.day) < (dob_date.month, dob_date.day))
+        
+#         if age < 18:
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "error": "You must be at least 18 years old to use this service"
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+#     except ValueError:
+#         return Response(
+#             {
+#                 "success": False,
+#                 "error": "Invalid date format. Use YYYY-MM-DD"
+#             },
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+    
+#     # Validate phone number (basic validation)
+#     if len(phone) < 10:
+#         return Response(
+#             {
+#                 "success": False,
+#                 "error": "Please enter a valid phone number"
+#             },
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+    
+#     # Update user profile with KYC information
+#     try:
+#         user.dob = dob_date
+#         user.phone = phone
+#         user.address = address
+#         user.postal_code = postal_code
+#         user.city = city
+#         user.region = region
+#         user.id_type = id_type
+        
+#         # Store Cloudinary URLs in CloudinaryField
+#         # CloudinaryField can accept URL strings directly
+#         user.id_front = id_front_url
+#         user.id_back = id_back_url
+        
+#         user.has_submitted_kyc = True
+#         user.save()
+        
+#         # Create a notification for KYC submission
+#         Notification.objects.create(
+#             user=user,
+#             type="system",
+#             title="KYC Submitted Successfully",
+#             message="Your KYC documents have been submitted and are under review.",
+#             full_details="We will notify you once your documents have been verified. This typically takes 1-3 business days.",
+#         )
+
+#         logger.info(f"✅ KYC successfully submitted for user {user.email}")
+        
+#         return Response(
+#             {
+#                 "success": True,
+#                 "message": "KYC submitted successfully",
+#                 "data": {
+#                     "dob": str(user.dob),
+#                     "phone": user.phone,
+#                     "address": user.address,
+#                     "city": user.city,
+#                     "region": user.region,
+#                     "postal_code": user.postal_code,
+#                     "id_type": user.id_type,
+#                     "id_front_url": str(user.id_front.url) if user.id_front else None,
+#                     "id_back_url": str(user.id_back.url) if user.id_back else None,
+#                     "has_submitted_kyc": user.has_submitted_kyc,
+#                     "is_verified": user.is_verified,
+#                 }
+#             },
+#             status=status.HTTP_201_CREATED
+#         )
+    
+#     except Exception as e:
+#         logger.error(f"❌ KYC submission failed: {str(e)}")
+#         return Response(
+#             {
+#                 "success": False,
+#                 "error": f"Failed to submit KYC: {str(e)}"
+#             },
+#             status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#         )
+
+
+
+
+
+
+
+# @api_view(["POST"])
+# @permission_classes([IsAuthenticated])
+# @authentication_classes([TokenAuthentication])
+# @parser_classes([MultiPartParser, FormParser])
+# def submit_kyc(request):
+#     """
+#     POST: Submit KYC information
+#     Expects:
+#     - dob: Date of birth (YYYY-MM-DD)
+#     - phone: Phone number
+#     - address: Street address
+#     - postal_code: Postal/ZIP code
+#     - city: City
+#     - region: Region/State
+#     - id_type: Type of ID (passport, driver_license, national_id, voter_card)
+#     - id_front: Front image of ID (file)
+#     - id_back: Back image of ID (file)
+#     """
+#     user = request.user
+
+#     # ADD LOGGING HERE - Right at the start
+#     logger.info("=" * 50)
+#     logger.info(f"KYC SUBMISSION ATTEMPT")
+#     logger.info(f"User: {user.email} (ID: {user.id})")
+#     logger.info(f"Has already submitted KYC: {user.has_submitted_kyc}")
+#     logger.info("-" * 50)
+#     logger.info(f"Request data keys: {list(request.data.keys())}")
+#     logger.info(f"Request FILES keys: {list(request.FILES.keys())}")
+#     logger.info("-" * 50)
+    
+    
+    
+#     # Extract data from request
+#     dob = request.data.get("dob", "").strip()
+#     phone = request.data.get("phone", "").strip()
+#     address = request.data.get("address", "").strip()
+#     postal_code = request.data.get("postal_code", "").strip()
+#     city = request.data.get("city", "").strip()
+#     region = request.data.get("region", "").strip()
+#     id_type = request.data.get("id_type")
+
+
+#     logger.info(f"DOB: '{dob}'")
+#     logger.info(f"Phone: '{phone}' (length: {len(phone)})")
+#     logger.info(f"Address: '{address}' (length: {len(address)})")
+#     logger.info(f"Postal code: '{postal_code}'")
+#     logger.info(f"City: '{city}'")
+#     logger.info(f"Region: '{region}'")
+#     logger.info(f"ID Type: '{id_type}'")
+    
+#     # Get file uploads
+#     id_front = request.FILES.get("id_front")
+#     id_back = request.FILES.get("id_back")
+
+
+
+#     # Check if user has already submitted KYC
+#     if user.has_submitted_kyc:
+#         logger.warning(f"User {user.email} tried to submit KYC again")
+#         return Response(
+#             {
+#                 "success": False,
+#                 "error": "You have already submitted your KYC documents. They are under review."
+#             },
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+
+
+#     if id_front:
+#         logger.info(f"ID Front: {id_front.name} ({id_front.size} bytes)")
+#     else:
+#         logger.warning("ID Front: MISSING")
+    
+#     if id_back:
+#         logger.info(f"ID Back: {id_back.name} ({id_back.size} bytes)")
+#     else:
+#         logger.warning("ID Back: MISSING")
+    
+#     logger.info("=" * 50)
+
+
+#     # Detailed validation with specific error messages
+#     if not dob:
+#         logger.error("Validation failed: DOB missing")
+#         return Response({"success": False, "error": "Date of birth is required"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not phone or len(phone) < 10:
+#         logger.error(f"Validation failed: Phone invalid ('{phone}'). Phone should be at least 10 digits.")
+#         return Response({"success": False, "error": "Please enter a valid phone number (at least 10 digits)"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not address or len(address) < 5:
+#         logger.error(f"Validation failed: Address too short ('{address}')")
+#         return Response({"success": False, "error": "Please enter a complete street address"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not postal_code:
+#         logger.error("Validation failed: Postal code missing")
+#         return Response({"success": False, "error": "Postal code is required"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not city:
+#         logger.error("Validation failed: City missing")
+#         return Response({"success": False, "error": "City is required"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not region:
+#         logger.error("Validation failed: Region missing")
+#         return Response({"success": False, "error": "Region/State is required"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not id_type:
+#         logger.error("Validation failed: ID type missing")
+#         return Response({"success": False, "error": "Please select an ID type"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not id_front:
+#         logger.error("Validation failed: ID front image missing")
+#         return Response({"success": False, "error": "Please upload the front of your ID"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+#     if not id_back:
+#         logger.error("Validation failed: ID back image missing")
+#         return Response({"success": False, "error": "Please upload the back of your ID"}, 
+#                        status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    
+
+#     # Validation
+#     if not all([dob, phone, address, postal_code, city, region, id_type]):
+#         return Response(
+#             {
+#                 "success": False,
+#                 "error": "All fields are required"
+#             },
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+    
+#     if not id_front or not id_back:
+#         return Response(
+#             {
+#                 "success": False,
+#                 "error": "Both front and back ID images are required"
+#             },
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+    
+#     # Validate ID type
+#     valid_id_types = ["passport", "driver_license", "national_id", "voter_card"]
+#     if id_type not in valid_id_types:
+#         return Response(
+#             {"success": False, "error": "Invalid ID type selected"},
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+    
+#     # Validate file sizes (5MB limit)
+#     max_size = 5 * 1024 * 1024  # 5MB
+
+#     if id_front.size > max_size:
+#         return Response(
+#             {"success": False, "error": "ID front image is too large. Maximum size is 5MB"},
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+    
+#     if id_back.size > max_size:
+#         return Response(
+#             {"success": False, "error": "ID back image is too large. Maximum size is 5MB"},
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+    
+
+#     # Validate date of birth format
+#     try:
+#         from datetime import datetime
+#         dob_date = datetime.strptime(dob, "%Y-%m-%d").date()
+        
+#         # Check if user is at least 18 years old
+#         from datetime import date
+#         today = date.today()
+#         age = today.year - dob_date.year - ((today.month, today.day) < (dob_date.month, dob_date.day))
+        
+#         if age < 18:
+#             return Response(
+#                 {
+#                     "success": False,
+#                     "error": "You must be at least 18 years old to use this service"
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+#     except ValueError:
+#         return Response(
+#             {
+#                 "success": False,
+#                 "error": "Invalid date format. Use YYYY-MM-DD"
+#             },
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+    
+#     # Validate phone number (basic validation)
+#     if len(phone) < 10:
+#         return Response(
+#             {
+#                 "success": False,
+#                 "error": "Please enter a valid phone number"
+#             },
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+    
+#     # Update user profile with KYC information
+#     try:
+#         user.dob = dob_date
+#         user.phone = phone
+#         user.address = address
+#         user.postal_code = postal_code
+#         user.city = city
+#         user.region = region
+#         user.id_type = id_type
+#         user.id_front = id_front
+#         user.id_back = id_back
+#         user.has_submitted_kyc = True
+#         user.save()
+        
+#         # Create a notification for KYC submission
+#         Notification.objects.create(
+#             user=user,
+#             type="system",
+#             title="KYC Submitted Successfully",
+#             message="Your KYC documents have been submitted and are under review.",
+#             full_details="We will notify you once your documents have been verified. This typically takes 1-3 business days.",
+#             # priority="medium"
+#         )
+
+#         # At the end, if successful:
+#         logger.info(f"✅ KYC successfully submitted for user {user.email}")
+        
+#         return Response(
+#             {
+#                 "success": True,
+#                 "message": "KYC submitted successfully",
+#                 "data": {
+#                     "dob": str(user.dob),
+#                     "phone": user.phone,
+#                     "address": user.address,
+#                     "city": user.city,
+#                     "region": user.region,
+#                     "postal_code": user.postal_code,
+#                     "id_type": user.id_type,
+#                     "has_submitted_kyc": user.has_submitted_kyc,
+#                     "is_verified": user.is_verified,
+#                 }
+#             },
+#             status=status.HTTP_201_CREATED
+#         )
+    
+#     except Exception as e:
+#         return Response(
+#             {
+#                 "success": False,
+#                 "error": f"Failed to submit KYC: {str(e)}"
+#             },
+#             status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#         )
 
 
 @api_view(["GET"])
