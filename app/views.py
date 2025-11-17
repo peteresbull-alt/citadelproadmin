@@ -2755,7 +2755,9 @@ def submit_kyc(request):
     logger.info(f"Region: '{region}'")
     logger.info(f"ID Type: '{id_type}'")
     logger.info(f"ID Front URL: '{id_front_url}'")
+    print(f"ID Front URL: '{id_front_url}'")
     logger.info(f"ID Back URL: '{id_back_url}'")
+    print(f"ID Back URL: '{id_back_url}'")
     logger.info("=" * 50)
 
     # Check if user has already submitted KYC
