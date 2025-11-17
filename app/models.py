@@ -9,6 +9,9 @@ from django.dispatch import receiver
 from rest_framework.authtoken.models import Token
 from decimal import Decimal
 
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+
 from cloudinary.models import CloudinaryField
 
 
@@ -418,6 +421,109 @@ class Trader(models.Model):
             return 0
         return (self.total_wins / total) * 100
 
+
+
+
+class UserTraderCopy(models.Model):
+    """
+    Model to track users copying traders
+    Ensures no duplicate copy relationships and maintains copying state
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='copied_traders',
+        help_text="User who is copying the trader"
+    )
+    trader = models.ForeignKey(
+        Trader,
+        on_delete=models.CASCADE,
+        related_name='copying_users',
+        help_text="Trader being copied"
+    )
+    is_actively_copying = models.BooleanField(
+        default=True,
+        help_text="Whether user is currently actively copying this trader"
+    )
+    minimum_amount_user_copied = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Minimum threshold amount when user started copying"
+    )
+    started_copying_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the user started copying this trader"
+    )
+    last_updated = models.DateTimeField(
+        auto_now=True,
+        help_text="Last time the copy status was updated"
+    )
+    stopped_copying_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the user stopped copying (if applicable)"
+    )
+    
+    class Meta:
+        verbose_name = "User Trader Copy"
+        verbose_name_plural = "User Trader Copies"
+        ordering = ["-started_copying_at"]
+        # Ensure one user can only have one copy relationship with a trader
+        unique_together = ['user', 'trader']
+        indexes = [
+            models.Index(fields=['user', 'trader', 'is_actively_copying']),
+            models.Index(fields=['is_actively_copying']),
+        ]
+    
+    def __str__(self):
+        status = "Copying" if self.is_actively_copying else "Stopped"
+        return f"{self.user.email} -> {self.trader.name} ({status})"
+    
+    def save(self, *args, **kwargs):
+        """
+        Override save to update stopped_copying_at timestamp
+        """
+        if not self.is_actively_copying and not self.stopped_copying_at:
+            self.stopped_copying_at = timezone.now()
+        elif self.is_actively_copying:
+            # If reactivating, clear the stopped timestamp
+            self.stopped_copying_at = None
+        super().save(*args, **kwargs)
+
+@receiver(pre_save, sender=Trader)
+def check_trader_threshold_change(sender, instance, **kwargs):
+    """
+    When admin changes trader's min_account_threshold,
+    automatically stop all active copies for users who no longer meet the threshold
+    """
+    if instance.pk:  # Only for existing traders
+        try:
+            old_trader = Trader.objects.get(pk=instance.pk)
+            # Check if min_account_threshold changed
+            if old_trader.min_account_threshold != instance.min_account_threshold:
+                # Get all active copies of this trader
+                active_copies = UserTraderCopy.objects.filter(
+                    trader=instance,
+                    is_actively_copying=True
+                )
+                
+                # Deactivate copies where minimum changed
+                for copy_relation in active_copies:
+                    # Stop copying since threshold changed
+                    copy_relation.is_actively_copying = False
+                    copy_relation.stopped_copying_at = timezone.now()
+                    copy_relation.save()
+                    
+                    # Create notification for user
+                    Notification.objects.create(
+                        user=copy_relation.user,
+                        type="alert",
+                        title="Copy Trading Stopped",
+                        message=f"Your copy of {instance.name} has been stopped due to minimum balance requirement change.",
+                        full_details=f"The minimum balance requirement for {instance.name} has changed from ${old_trader.min_account_threshold} to ${instance.min_account_threshold}. Your copy trading has been automatically stopped. Please review and copy again if you meet the new requirements.",
+                    )
+        except Trader.DoesNotExist:
+            pass
 
 class TraderPortfolio(models.Model):
     DIRECTION_CHOICES = [

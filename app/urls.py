@@ -88,6 +88,11 @@ from .views import(
     user_purchased_signals,
     user_signal_balance,
 
+    # Copy Trading Action
+    copy_trader_action, 
+    get_user_copy_status, 
+    get_all_user_copies,
+
 
     # Referer
     get_referral_info,
@@ -134,6 +139,11 @@ urlpatterns = [
 
      path("traders/", trader_list_create, name="trader-list-create"),
     path("traders/<int:pk>/", trader_detail, name="trader-detail"),
+
+
+    path("copy-trader/action/", copy_trader_action, name="copy-trader-action"),
+    path("copy-trader/status/<int:trader_id>/", get_user_copy_status, name="user-copy-status"),
+    path("copy-trader/my-copies/", get_all_user_copies, name="user-all-copies"),
 
     path("assets/", asset_list, name="asset-list"),
     path("assets/grouped/", grouped_assets, name="grouped-assets"),

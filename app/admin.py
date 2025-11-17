@@ -9,6 +9,7 @@ from .models import (
     Trader, 
     # Asset,
     TraderPortfolio,
+    UserTraderCopy,
     Notification,
     Portfolio,
     News,
@@ -504,6 +505,8 @@ class UserSignalPurchaseAdmin(admin.ModelAdmin):
 
 # Add this to your admin.py file, replacing the basic registrations
 
+
+admin.site.register(UserTraderCopy)
 
 
 @admin.register(Trader)

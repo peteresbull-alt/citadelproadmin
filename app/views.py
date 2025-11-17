@@ -44,6 +44,9 @@ from .serializers import (
     UserStockPositionSerializer,
     TradeHistorySerializer,
 
+    UserTraderCopySerializer, 
+    UserTraderCopyCreateSerializer,
+
     WalletConnectionSerializer,
     WalletConnectionCreateSerializer,
     WalletConnectionListSerializer,
@@ -55,6 +58,8 @@ from .serializers import (
     UserSignalPurchaseSerializer,
     SignalPurchaseCreateSerializer,
 )
+
+
 from .models import (
     Ticket, 
     Trader, 
@@ -76,6 +81,7 @@ from .models import (
     Signal, 
     UserSignalPurchase, 
     Transaction,
+    UserTraderCopy,
 
 
 
@@ -850,6 +856,182 @@ def trader_detail(request, pk):
         return Response({"message": "Trader deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def copy_trader_action(request):
+    """
+    POST: Copy or cancel copying a trader
+    Expects:
+    - trader_id: ID of the trader
+    - action: 'copy' or 'cancel'
+    """
+    user = request.user
+    
+    # Validate input
+    serializer = UserTraderCopyCreateSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(
+            {
+                "success": False,
+                "errors": serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    trader_id = serializer.validated_data['trader_id']
+    action = serializer.validated_data['action']
+    
+    # Get trader
+    try:
+        trader = Trader.objects.get(id=trader_id, is_active=True)
+    except Trader.DoesNotExist:
+        return Response(
+            {
+                "success": False,
+                "error": "Trader not found or inactive"
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check user balance against minimum threshold
+    min_threshold = float(trader.min_account_threshold)
+    user_balance = float(user.balance)
+    
+    if action == 'copy':
+        # Validate user has sufficient balance
+        if user_balance < min_threshold:
+            return Response(
+                {
+                    "success": False,
+                    "error": f"Insufficient balance. Required: ${min_threshold:,.2f}, Your balance: ${user_balance:,.2f}"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get or create copy relationship
+        copy_relation, created = UserTraderCopy.objects.get_or_create(
+            user=user,
+            trader=trader,
+            defaults={
+                'is_actively_copying': True,
+                'minimum_amount_user_copied': trader.min_account_threshold
+            }
+        )
+        
+        if not created:
+            # Update existing relationship
+            copy_relation.is_actively_copying = True
+            copy_relation.minimum_amount_user_copied = trader.min_account_threshold
+            copy_relation.stopped_copying_at = None
+            copy_relation.save()
+            message = f"Resumed copying {trader.name}"
+        else:
+            message = f"Started copying {trader.name}"
+        
+        # Create notification
+        Notification.objects.create(
+            user=user,
+            type="trade",
+            title="Copy Trading Started",
+            message=f"You are now copying {trader.name}",
+            full_details=f"Trader: {trader.name}\nMinimum Balance: ${min_threshold:,.2f}\nYour Balance: ${user_balance:,.2f}",
+        )
+        
+        return Response({
+            "success": True,
+            "message": message,
+            "copy_relation": UserTraderCopySerializer(copy_relation).data
+        }, status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED)
+    
+    elif action == 'cancel':
+        # Get copy relationship
+        try:
+            copy_relation = UserTraderCopy.objects.get(
+                user=user,
+                trader=trader
+            )
+        except UserTraderCopy.DoesNotExist:
+            return Response(
+                {
+                    "success": False,
+                    "error": "You are not copying this trader"
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Stop copying
+        copy_relation.is_actively_copying = False
+        copy_relation.save()
+        
+        # Create notification
+        Notification.objects.create(
+            user=user,
+            type="trade",
+            title="Copy Trading Stopped",
+            message=f"You have stopped copying {trader.name}",
+            full_details=f"Trader: {trader.name}\nStopped at: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        )
+        
+        return Response({
+            "success": True,
+            "message": f"Stopped copying {trader.name}",
+            "copy_relation": UserTraderCopySerializer(copy_relation).data
+        }, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def get_user_copy_status(request, trader_id):
+    """
+    GET: Check if user is currently copying a specific trader
+    """
+    user = request.user
+    
+    try:
+        copy_relation = UserTraderCopy.objects.get(
+            user=user,
+            trader_id=trader_id
+        )
+        return Response({
+            "success": True,
+            "is_copying": copy_relation.is_actively_copying,
+            "copy_relation": UserTraderCopySerializer(copy_relation).data
+        }, status=status.HTTP_200_OK)
+    except UserTraderCopy.DoesNotExist:
+        return Response({
+            "success": True,
+            "is_copying": False,
+            "copy_relation": None
+        }, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def get_all_user_copies(request):
+    """
+    GET: Get all traders the user is currently copying or has copied
+    Query params:
+    - active_only: Show only active copies (default: true)
+    """
+    user = request.user
+    active_only = request.GET.get("active_only", "true").lower() == "true"
+    
+    copies = UserTraderCopy.objects.filter(user=user)
+    
+    if active_only:
+        copies = copies.filter(is_actively_copying=True)
+    
+    serializer = UserTraderCopySerializer(copies, many=True)
+    
+    return Response({
+        "success": True,
+        "copies": serializer.data,
+        "count": len(serializer.data)
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(["GET"])

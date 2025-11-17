@@ -11,6 +11,7 @@ from .models import (
     WalletConnection,
     Signal, UserSignalPurchase,
     TradeHistory,
+    UserTraderCopy,
 )
 
 
@@ -214,7 +215,44 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 
 
+class UserTraderCopySerializer(serializers.ModelSerializer):
+    """Serializer for UserTraderCopy model"""
+    trader_name = serializers.CharField(source='trader.name', read_only=True)
+    trader_username = serializers.CharField(source='trader.username', read_only=True)
+    trader_gain = serializers.CharField(source='trader.gain', read_only=True)
+    trader_risk = serializers.IntegerField(source='trader.risk', read_only=True)
+    
+    class Meta:
+        model = UserTraderCopy
+        fields = [
+            'id',
+            'user',
+            'trader',
+            'trader_name',
+            'trader_username',
+            'trader_gain',
+            'trader_risk',
+            'is_actively_copying',
+            'minimum_amount_user_copied',
+            'started_copying_at',
+            'last_updated',
+            'stopped_copying_at'
+        ]
+        read_only_fields = ['id', 'started_copying_at', 'last_updated', 'stopped_copying_at']
 
+
+class UserTraderCopyCreateSerializer(serializers.Serializer):
+    """Serializer for creating/updating copy trader relationship"""
+    trader_id = serializers.IntegerField()
+    action = serializers.ChoiceField(choices=['copy', 'cancel'])
+    
+    def validate_trader_id(self, value):
+        """Validate trader exists"""
+        try:
+            Trader.objects.get(id=value, is_active=True)
+        except Trader.DoesNotExist:
+            raise serializers.ValidationError("Trader not found or inactive")
+        return value
 
 
 
