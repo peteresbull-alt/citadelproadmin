@@ -314,6 +314,7 @@ class StockBasicSerializer(serializers.ModelSerializer):
         fields = ['id', 'symbol', 'name', 'price', 'logo_url']
 
 
+
 class UserStockPositionSerializer(serializers.ModelSerializer):
     stock = StockBasicSerializer(read_only=True)
     current_value = serializers.SerializerMethodField()
@@ -331,20 +332,28 @@ class UserStockPositionSerializer(serializers.ModelSerializer):
             'current_value',
             'profit_loss',
             'profit_loss_percent',
+            'use_admin_profit',  # Add this
+            'admin_profit_loss',  # Add this
             'opened_at',
             'is_active'
         ]
     
     def get_current_value(self, obj):
-        return str(obj.current_value)
+        """Return current value - either based on admin P/L or calculated"""
+        if obj.use_admin_profit:
+            # Use admin-set profit to calculate current value
+            return str(obj.total_invested + obj.admin_profit_loss)
+        else:
+            # Calculate based on current stock price
+            return str(obj.current_value)
     
     def get_profit_loss(self, obj):
-        return str(obj.profit_loss)
+        """Return profit/loss - either admin-set or calculated"""
+        return str(obj.profit_loss)  # This property already handles the logic
     
     def get_profit_loss_percent(self, obj):
-        return str(obj.profit_loss_percent)
-
-
+        """Return profit/loss percentage - either admin-set or calculated"""
+        return str(obj.profit_loss_percent)  # This property already handles the logic
 
 
 class TradeHistorySerializer(serializers.ModelSerializer):

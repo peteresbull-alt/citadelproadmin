@@ -235,132 +235,174 @@ class StockAdmin(admin.ModelAdmin):
         self.message_user(request, f'{queryset.count()} stocks unfeatured')
 
 
+# In admin.py
+
+
+# In admin.py - FIXED VERSION
+
+from django.contrib import admin
+from django.utils.html import format_html
+from decimal import Decimal
+from .models import UserStockPosition, Stock
+
 @admin.register(UserStockPosition)
 class UserStockPositionAdmin(admin.ModelAdmin):
     list_display = [
-        'user',
-        'stock',
-        'shares',
-        'average_buy_price',
+        'user_email', 
+        'stock_symbol', 
+        'shares', 
         'total_invested',
-        'current_value_display',
-        'profit_loss_display',
+        'display_current_value',
+        'display_profit_loss',
         'use_admin_profit',
-        'is_active',
-        'opened_at'
+        'is_active'
     ]
-    list_filter = ['is_active', 'use_admin_profit', 'opened_at', 'closed_at']
-    search_fields = ['user__email', 'stock__symbol', 'stock__name']
-    list_editable = ['use_admin_profit']
+    list_filter = ['is_active', 'use_admin_profit', 'stock__symbol']
+    search_fields = ['user__email', 'stock__symbol']
     readonly_fields = [
-        'opened_at',
-        'closed_at',
-        'current_value_display',
-        'calculated_profit_loss_display',
-        'calculated_profit_loss_percent_display'
+        'calculated_current_value', 
+        'calculated_profit_loss',
+        'calculated_profit_loss_percent',
+        'opened_at'
     ]
     
     fieldsets = (
         ('Position Information', {
-            'fields': ('user', 'stock', 'shares', 'is_active')
-        }),
-        ('Investment Details', {
             'fields': (
+                'user',
+                'stock',
+                'shares',
                 'average_buy_price',
                 'total_invested',
-                'current_value_display',
+                'is_active',
+                'opened_at',
+                'closed_at'
             )
         }),
-        ('Calculated Profit/Loss (Read-Only)', {
+        ('Calculated Values (Read-Only)', {
             'fields': (
-                'calculated_profit_loss_display',
-                'calculated_profit_loss_percent_display',
+                'calculated_current_value',
+                'calculated_profit_loss',
+                'calculated_profit_loss_percent',
             ),
-            'description': 'These are automatically calculated values for reference'
+            'description': 'These values are calculated based on current stock price'
         }),
-        # ('Admin Custom Profit/Loss', {
-        #     'fields': (
-        #         'use_admin_profit',
-        #         'admin_profit_loss',
-        #         'admin_profit_loss_percent',
-        #     ),
-        #     'description': 'Enable "Use admin profit" and set custom profit/loss values here'
-        # }),
-        ('Timestamps', {
-            'fields': ('opened_at', 'closed_at'),
+        ('Admin-Controlled Profit/Loss', {
+            'fields': (
+                'use_admin_profit',
+                'admin_profit_loss',
+                'admin_profit_loss_percent',
+            ),
+            'description': 'Enable "Use admin profit" to override calculated values with custom profit/loss'
         }),
     )
     
-    def current_value_display(self, obj):
-        """Display current value"""
-        return f"${obj.current_value:,.2f}"
-    current_value_display.short_description = 'Current Value'
+    def user_email(self, obj):
+        return obj.user.email
+    user_email.short_description = 'User'
+    user_email.admin_order_field = 'user__email'
     
-    def calculated_profit_loss_display(self, obj):
-        """Show calculated profit/loss for reference"""
-        calculated_pl = float(obj.current_value) - float(obj.total_invested)
-        color = "green" if calculated_pl >= 0 else "red"
-        formatted_value = "${:,.2f}".format(calculated_pl)
-        return format_html('<span style="color: {};">{}</span>', color, formatted_value)
-    calculated_profit_loss_display.short_description = 'Calculated P/L'
+    def stock_symbol(self, obj):
+        return obj.stock.symbol
+    stock_symbol.short_description = 'Stock'
+    stock_symbol.admin_order_field = 'stock__symbol'
     
-    def calculated_profit_loss_percent_display(self, obj):
-        """Show calculated profit/loss percent for reference"""
-        calculated_pl = float(obj.current_value) - float(obj.total_invested)
-        if float(obj.total_invested) > 0:
-            calculated_plp = (calculated_pl / float(obj.total_invested)) * 100
+    def display_current_value(self, obj):
+        """Display current value with color coding"""
+        if obj.use_admin_profit:
+            value = float(obj.total_invested) + float(obj.admin_profit_loss)
         else:
-            calculated_plp = 0
-        color = "green" if calculated_plp >= 0 else "red"
-        formatted_value = "{:.2f}%".format(calculated_plp)
-        return format_html('<span style="color: {};">{}</span>', color, formatted_value)
-    calculated_profit_loss_percent_display.short_description = 'Calculated P/L %'
-    
-    @admin.display(description="Displayed Profit/Loss")
-    def profit_loss_display(self, obj):
-        """Display profit/loss - shows admin value if enabled, otherwise calculated"""
-        # Use the property which handles the logic
-        pl_value = float(obj.profit_loss)
-        color = "green" if pl_value >= 0 else "red"
-        formatted_value = "${:,.2f}".format(pl_value)
+            value = float(obj.current_value)
         
-        # Add indicator if using admin value
-        indicator = " 🔧" if obj.use_admin_profit else ""
+        # Format value first, then pass to format_html
+        formatted_value = f"${value:,.2f}"
+        return format_html(
+            '<span style="font-weight: bold;">{}</span>',
+            formatted_value
+        )
+    display_current_value.short_description = 'Current Value'
+    
+    def display_profit_loss(self, obj):
+        """Display profit/loss with color coding"""
+        pl = float(obj.profit_loss)
+        pl_percent = float(obj.profit_loss_percent)
+        color = 'green' if pl >= 0 else 'red'
+        symbol = '+' if pl >= 0 else ''
+        
+        badge = '🎯 ADMIN' if obj.use_admin_profit else '📊 AUTO'
+        
+        # Format values first, then pass to format_html
+        formatted_pl = f"{symbol}${abs(pl):,.2f}"
+        formatted_percent = f"{symbol}{abs(pl_percent):.2f}%"
         
         return format_html(
-            '<span style="color: {};">{}{}</span>', 
-            color, 
+            '<span style="color: {}; font-weight: bold;">{} ({})</span> {}',
+            color,
+            formatted_pl,
+            formatted_percent,
+            badge
+        )
+    display_profit_loss.short_description = 'Profit/Loss'
+    
+    def calculated_current_value(self, obj):
+        """Show what the current value would be based on stock price"""
+        calc_value = float(obj.shares) * float(obj.stock.price)
+        price = float(obj.stock.price)
+        
+        # Format values first
+        formatted_value = f"${calc_value:,.2f}"
+        formatted_price = f"${price:,.2f}"
+        
+        return format_html(
+            '{} <small>(@ {}/share)</small>',
             formatted_value,
-            indicator
+            formatted_price
         )
+    calculated_current_value.short_description = 'Market-Based Current Value'
     
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs.select_related('user', 'stock')
-    
-    actions = ['close_positions', 'enable_admin_profit', 'disable_admin_profit']
-    
-    @admin.action(description='Close selected positions')
-    def close_positions(self, request, queryset):
-        from django.utils import timezone
-        count = queryset.filter(is_active=True).update(
-            is_active=False,
-            closed_at=timezone.now()
+    def calculated_profit_loss(self, obj):
+        """Show what the P/L would be based on stock price"""
+        calc_value = float(obj.shares) * float(obj.stock.price)
+        calc_pl = calc_value - float(obj.total_invested)
+        color = 'green' if calc_pl >= 0 else 'red'
+        symbol = '+' if calc_pl >= 0 else ''
+        
+        # Format value first
+        formatted_pl = f"{symbol}${abs(calc_pl):,.2f}"
+        
+        return format_html(
+            '<span style="color: {};">{}</span>',
+            color,
+            formatted_pl
         )
-        self.message_user(request, f'{count} positions closed')
+    calculated_profit_loss.short_description = 'Market-Based P/L'
     
-    @admin.action(description='Enable admin profit control')
-    def enable_admin_profit(self, request, queryset):
-        count = queryset.update(use_admin_profit=True)
-        self.message_user(request, f'Admin profit control enabled for {count} positions')
+    def calculated_profit_loss_percent(self, obj):
+        """Show what the P/L% would be based on stock price"""
+        calc_value = float(obj.shares) * float(obj.stock.price)
+        calc_pl = calc_value - float(obj.total_invested)
+        
+        total_invested = float(obj.total_invested)
+        calc_pl_percent = (calc_pl / total_invested * 100) if total_invested > 0 else 0
+        
+        color = 'green' if calc_pl_percent >= 0 else 'red'
+        symbol = '+' if calc_pl_percent >= 0 else ''
+        
+        # Format value first
+        formatted_percent = f"{symbol}{abs(calc_pl_percent):.2f}%"
+        
+        return format_html(
+            '<span style="color: {};">{}</span>',
+            color,
+            formatted_percent
+        )
+    calculated_profit_loss_percent.short_description = 'Market-Based P/L %'
     
-    @admin.action(description='Disable admin profit control (use calculated)')
-    def disable_admin_profit(self, request, queryset):
-        count = queryset.update(use_admin_profit=False)
-        self.message_user(request, f'Admin profit control disabled for {count} positions (using calculated values)')
-
-
-
+    def save_model(self, request, obj, form, change):
+        """Auto-calculate admin_profit_loss_percent when admin_profit_loss is set"""
+        if obj.use_admin_profit and float(obj.total_invested) > 0:
+            obj.admin_profit_loss_percent = (float(obj.admin_profit_loss) / float(obj.total_invested)) * 100
+        super().save_model(request, obj, form, change)
 
 # app/admin.py - Add this to your existing admin.py
 
