@@ -298,23 +298,26 @@ class UserStockPositionAdmin(admin.ModelAdmin):
     )
     
     def user_email(self, obj):
-        return obj.user.email
+        return obj.user.email if obj.user else '-'
     user_email.short_description = 'User'
     user_email.admin_order_field = 'user__email'
     
     def stock_symbol(self, obj):
-        return obj.stock.symbol
+        return obj.stock.symbol if obj.stock else '-'
     stock_symbol.short_description = 'Stock'
     stock_symbol.admin_order_field = 'stock__symbol'
     
     def display_current_value(self, obj):
         """Display current value with color coding"""
+        # Check if required fields exist
+        if not obj.stock or not obj.shares or not obj.total_invested:
+            return format_html('<span>-</span>')
+        
         if obj.use_admin_profit:
             value = float(obj.total_invested) + float(obj.admin_profit_loss)
         else:
             value = float(obj.current_value)
         
-        # Format value first, then pass to format_html
         formatted_value = f"${value:,.2f}"
         return format_html(
             '<span style="font-weight: bold;">{}</span>',
@@ -324,6 +327,10 @@ class UserStockPositionAdmin(admin.ModelAdmin):
     
     def display_profit_loss(self, obj):
         """Display profit/loss with color coding"""
+        # Check if required fields exist
+        if not obj.stock or not obj.shares or not obj.total_invested:
+            return format_html('<span>-</span>')
+        
         pl = float(obj.profit_loss)
         pl_percent = float(obj.profit_loss_percent)
         color = 'green' if pl >= 0 else 'red'
@@ -331,7 +338,6 @@ class UserStockPositionAdmin(admin.ModelAdmin):
         
         badge = '🎯 ADMIN' if obj.use_admin_profit else '📊 AUTO'
         
-        # Format values first, then pass to format_html
         formatted_pl = f"{symbol}${abs(pl):,.2f}"
         formatted_percent = f"{symbol}{abs(pl_percent):.2f}%"
         
@@ -346,10 +352,13 @@ class UserStockPositionAdmin(admin.ModelAdmin):
     
     def calculated_current_value(self, obj):
         """Show what the current value would be based on stock price"""
+        # FIXED: Check if all required fields exist
+        if not obj.stock or not obj.shares or obj.stock.price is None:
+            return format_html('<span style="color: gray;">-</span>')
+        
         calc_value = float(obj.shares) * float(obj.stock.price)
         price = float(obj.stock.price)
         
-        # Format values first
         formatted_value = f"${calc_value:,.2f}"
         formatted_price = f"${price:,.2f}"
         
@@ -362,12 +371,15 @@ class UserStockPositionAdmin(admin.ModelAdmin):
     
     def calculated_profit_loss(self, obj):
         """Show what the P/L would be based on stock price"""
+        # FIXED: Check if all required fields exist
+        if not obj.stock or not obj.shares or not obj.total_invested or obj.stock.price is None:
+            return format_html('<span style="color: gray;">-</span>')
+        
         calc_value = float(obj.shares) * float(obj.stock.price)
         calc_pl = calc_value - float(obj.total_invested)
         color = 'green' if calc_pl >= 0 else 'red'
         symbol = '+' if calc_pl >= 0 else ''
         
-        # Format value first
         formatted_pl = f"{symbol}${abs(calc_pl):,.2f}"
         
         return format_html(
@@ -379,6 +391,10 @@ class UserStockPositionAdmin(admin.ModelAdmin):
     
     def calculated_profit_loss_percent(self, obj):
         """Show what the P/L% would be based on stock price"""
+        # FIXED: Check if all required fields exist
+        if not obj.stock or not obj.shares or not obj.total_invested or obj.stock.price is None:
+            return format_html('<span style="color: gray;">-</span>')
+        
         calc_value = float(obj.shares) * float(obj.stock.price)
         calc_pl = calc_value - float(obj.total_invested)
         
@@ -388,7 +404,6 @@ class UserStockPositionAdmin(admin.ModelAdmin):
         color = 'green' if calc_pl_percent >= 0 else 'red'
         symbol = '+' if calc_pl_percent >= 0 else ''
         
-        # Format value first
         formatted_percent = f"{symbol}{abs(calc_pl_percent):.2f}%"
         
         return format_html(
@@ -400,10 +415,10 @@ class UserStockPositionAdmin(admin.ModelAdmin):
     
     def save_model(self, request, obj, form, change):
         """Auto-calculate admin_profit_loss_percent when admin_profit_loss is set"""
-        if obj.use_admin_profit and float(obj.total_invested) > 0:
+        if obj.use_admin_profit and obj.total_invested and float(obj.total_invested) > 0:
             obj.admin_profit_loss_percent = (float(obj.admin_profit_loss) / float(obj.total_invested)) * 100
         super().save_model(request, obj, form, change)
-
+        
 # app/admin.py - Add this to your existing admin.py
 
 from django.contrib import admin
