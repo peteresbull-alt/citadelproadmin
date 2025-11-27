@@ -57,6 +57,7 @@ from .serializers import (
     SignalDetailSerializer,
     UserSignalPurchaseSerializer,
     SignalPurchaseCreateSerializer,
+    UserCopyTraderHistorySerializer,
 )
 
 
@@ -82,9 +83,7 @@ from .models import (
     UserSignalPurchase, 
     Transaction,
     UserTraderCopy,
-
-
-
+    UserCopyTraderHistory,
     generate_unique_referral_code,
 )
 
@@ -3605,10 +3604,142 @@ def generate_referral_code(request):
     }, status=status.HTTP_201_CREATED)
 
 
+# Admin implemented copied usr trader history
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def get_copy_trade_history(request):
+    """
+    GET: Get copy trading history for authenticated user
+    Query params:
+    - status: Filter by status (open/closed) - optional
+    - trader_id: Filter by specific trader - optional
+    - limit: Number of trades to return (default: 50)
+    """
+    user = request.user
+    
+    # Base queryset
+    history = UserCopyTraderHistory.objects.filter(user=user)
+    
+    # Filter by status
+    status_filter = request.GET.get('status')
+    if status_filter and status_filter in ['open', 'closed']:
+        history = history.filter(status=status_filter)
+    
+    # Filter by trader
+    trader_id = request.GET.get('trader_id')
+    if trader_id:
+        history = history.filter(trader_id=trader_id)
+    
+    # Calculate summary BEFORE slicing
+    open_trades = UserCopyTraderHistory.objects.filter(
+        user=user, 
+        status='open'
+    ).count()
+    
+    closed_trades = UserCopyTraderHistory.objects.filter(
+        user=user, 
+        status='closed'
+    ).count()
+    
+    total_profit_loss = UserCopyTraderHistory.objects.filter(
+        user=user,
+        status='closed'
+    ).aggregate(
+        total=Sum('profit_loss')
+    )['total'] or Decimal('0.00')
+    
+    # NOW apply limit and slice
+    limit = request.GET.get('limit', 50)
+    try:
+        limit = int(limit)
+    except ValueError:
+        limit = 50
+    
+    history_limited = history[:limit]
+    
+    serializer = UserCopyTraderHistorySerializer(history_limited, many=True)
+    
+    return Response({
+        "success": True,
+        "history": serializer.data,
+        "summary": {
+            "open_trades": open_trades,
+            "closed_trades": closed_trades,
+            "total_profit_loss": str(total_profit_loss)
+        }
+    }, status=status.HTTP_200_OK)
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def get_copy_trade_detail(request, trade_id):
+    """
+    GET: Get details of a specific copy trade
+    """
+    user = request.user
+    
+    try:
+        trade = UserCopyTraderHistory.objects.get(id=trade_id, user=user)
+    except UserCopyTraderHistory.DoesNotExist:
+        return Response({
+            "success": False,
+            "error": "Trade not found"
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    serializer = UserCopyTraderHistorySerializer(trade)
+    
+    return Response({
+        "success": True,
+        "trade": serializer.data
+    }, status=status.HTTP_200_OK)
 
 
-
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def close_copy_trade(request, trade_id):
+    """
+    POST: Close an open copy trade
+    """
+    user = request.user
+    
+    try:
+        trade = UserCopyTraderHistory.objects.get(
+            id=trade_id, 
+            user=user,
+            status='open'
+        )
+    except UserCopyTraderHistory.DoesNotExist:
+        return Response({
+            "success": False,
+            "error": "Trade not found or already closed"
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    # Update trade status
+    trade.status = 'closed'
+    trade.closed_at = timezone.now()
+    
+    # You can also update profit_loss here if needed
+    # trade.profit_loss = calculate_final_profit_loss(trade)
+    
+    trade.save()
+    
+    # Create notification
+    Notification.objects.create(
+        user=user,
+        type="trade",
+        title="Copy Trade Closed",
+        message=f"Your {trade.market} {trade.direction} trade has been closed",
+        full_details=f"Market: {trade.market}\nDirection: {trade.direction}\nProfit/Loss: ${float(trade.profit_loss):.2f}\nReference: {trade.reference}",
+    )
+    
+    return Response({
+        "success": True,
+        "message": "Trade closed successfully",
+        "trade": UserCopyTraderHistorySerializer(trade).data
+    }, status=status.HTTP_200_OK)
 
 

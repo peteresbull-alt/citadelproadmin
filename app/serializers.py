@@ -12,6 +12,7 @@ from .models import (
     Signal, UserSignalPurchase,
     TradeHistory,
     UserTraderCopy,
+    UserCopyTraderHistory,
 )
 
 
@@ -106,6 +107,42 @@ class TraderSerializer(serializers.ModelSerializer):
         if obj.country_flag:
             return obj.country_flag.url  # Full Cloudinary URL
         return None
+
+
+# Admin will update it himself
+class UserCopyTraderHistorySerializer(serializers.ModelSerializer):
+    """Serializer for copy trade history"""
+    trader_name = serializers.CharField(source='trader.name', read_only=True)
+    trader_username = serializers.CharField(source='trader.username', read_only=True)
+    time_ago = serializers.ReadOnlyField()
+    is_profit = serializers.ReadOnlyField()
+    
+    class Meta:
+        model = UserCopyTraderHistory
+        fields = [
+            'id',
+            'user',
+            'trader',
+            'trader_name',
+            'trader_username',
+            'market',
+            'direction',
+            'leverage',
+            'duration',
+            'amount',
+            'entry_price',
+            'exit_price',
+            'profit_loss',
+            'status',
+            'opened_at',
+            'closed_at',
+            'reference',
+            'notes',
+            'time_ago',
+            'is_profit'
+        ]
+        read_only_fields = ['id', 'opened_at', 'reference']
+
 
 
 class AssetSerializer(serializers.ModelSerializer):

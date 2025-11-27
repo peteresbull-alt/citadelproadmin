@@ -423,6 +423,162 @@ class Trader(models.Model):
 
 
 
+# Admin will update this by himself
+class UserCopyTraderHistory(models.Model):
+    """
+    Model to track copy trading history/transactions
+    """
+    DIRECTION_CHOICES = [
+        ('buy', 'Buy'),
+        ('sell', 'Sell'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('closed', 'Closed'),
+    ]
+    
+    # Relationships
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='copy_trade_history',
+        help_text="User who made this copy trade"
+    )
+    trader = models.ForeignKey(
+        Trader,
+        on_delete=models.CASCADE,
+        related_name='copy_trade_history',
+        help_text="Trader being copied"
+    )
+    
+    # Trade Details
+    market = models.CharField(
+        max_length=50,
+        help_text="Market/Asset name (e.g., BTC/USD, EUR/USD)"
+    )
+    direction = models.CharField(
+        max_length=10,
+        choices=DIRECTION_CHOICES,
+        help_text="Trade direction: Buy or Sell"
+    )
+    leverage = models.CharField(
+        max_length=10,
+        help_text="Leverage used (e.g., 5x, 50x, 100x)"
+    )
+    duration = models.CharField(
+        max_length=50,
+        help_text="Trade duration (e.g., 2 minutes, 5 minutes, 1 hour)"
+    )
+    
+    # Financial Details
+    amount = models.DecimalField(
+        max_digits=20,
+        decimal_places=8,
+        help_text="Amount invested in base currency"
+    )
+    entry_price = models.DecimalField(
+        max_digits=20,
+        decimal_places=8,
+        help_text="Entry price of the trade"
+    )
+    exit_price = models.DecimalField(
+        max_digits=20,
+        decimal_places=8,
+        null=True,
+        blank=True,
+        help_text="Exit price (for closed trades)"
+    )
+    profit_loss = models.DecimalField(
+        max_digits=20,
+        decimal_places=2,
+        default=0.00,
+        help_text="Profit or loss from this trade"
+    )
+    
+    # Status & Timestamps
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='open',
+        help_text="Trade status: Open or Closed"
+    )
+    opened_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the trade was opened"
+    )
+    closed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the trade was closed"
+    )
+    
+    # Additional Info
+    reference = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Unique trade reference"
+    )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Additional notes about the trade"
+    )
+    
+    class Meta:
+        verbose_name = "Copy Trade History"
+        verbose_name_plural = "Copy Trade Histories"
+        ordering = ["-opened_at"]
+        indexes = [
+            models.Index(fields=['user', '-opened_at']),
+            models.Index(fields=['trader', '-opened_at']),
+            models.Index(fields=['status']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.market} - {self.direction} - {self.status}"
+    
+    @property
+    def time_ago(self):
+        """Calculate time since trade was opened"""
+        # Handle case when opened_at is None (new unsaved instance)
+        if not self.opened_at:
+            return "Not yet opened"
+        
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        now = timezone.now()
+        diff = now - self.opened_at
+        
+        if diff < timedelta(minutes=1):
+            return "just now"
+        elif diff < timedelta(hours=1):
+            mins = int(diff.total_seconds() / 60)
+            return f"{mins}m ago"
+        elif diff < timedelta(days=1):
+            hours = int(diff.total_seconds() / 3600)
+            return f"{hours}h ago"
+        elif diff < timedelta(weeks=1):
+            days = diff.days
+            return f"{days}d ago"
+        else:
+            weeks = diff.days // 7
+            return f"{weeks}w ago"
+    
+    @property
+    def is_profit(self):
+        """Check if trade is profitable"""
+        return self.profit_loss > 0
+    
+    def save(self, *args, **kwargs):
+        """Auto-generate reference if not provided"""
+        if not self.reference:
+            from django.utils.crypto import get_random_string
+            self.reference = f"CPT-{get_random_string(12).upper()}"
+        super().save(*args, **kwargs)
+
+
 
 class UserTraderCopy(models.Model):
     """

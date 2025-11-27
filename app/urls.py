@@ -101,7 +101,15 @@ from .views import(
     get_referral_earnings_history,
     generate_referral_code,
 
+
+    # Admin implemented copy trader history
+    get_copy_trade_history,
+    get_copy_trade_detail,
+    close_copy_trade,
+
 )
+
+
 
 urlpatterns = [
      path("api/validate-token/", validate_token, name="validate-token"),
@@ -220,6 +228,11 @@ urlpatterns = [
     path('referral/validate/', validate_referral_code, name='validate_referral_code'),
     path('referral/earnings/', get_referral_earnings_history, name='get_referral_earnings_history'),
     path('referral/generate/', generate_referral_code, name='generate_referral_code'),
+
+    # Admin implemented copy trading history
+    path("copy-trade-history/", get_copy_trade_history, name="copy-trade-history"),
+    path("copy-trade-history/<int:trade_id>/", get_copy_trade_detail, name="copy-trade-detail"),
+    path("copy-trade-history/<int:trade_id>/close/", close_copy_trade, name="close-copy-trade"),
 
 ]
 

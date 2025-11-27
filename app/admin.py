@@ -17,8 +17,113 @@ from .models import (
     UserStockPosition,
 
     WalletConnection,
+
+    # Admin implemented copy trader history
+    UserCopyTraderHistory,
     
 )
+
+
+
+@admin.register(UserCopyTraderHistory)
+class UserCopyTraderHistoryAdmin(admin.ModelAdmin):
+    list_display = [
+        'user_email',
+        'trader_name',
+        'market',
+        'direction',
+        'leverage',
+        'amount',
+        'profit_loss_display',
+        'status',
+        'opened_at'
+    ]
+    
+    list_filter = [
+        'status',
+        'direction',
+        'opened_at',
+        'trader__name'
+    ]
+    
+    search_fields = [
+        'user__email',
+        'trader__name',
+        'market',
+        'reference'
+    ]
+    
+    list_editable = ['status']
+    
+    readonly_fields = ['reference', 'opened_at', 'display_time_ago']
+    
+    fieldsets = (
+        ('Relationships', {
+            'fields': ('user', 'trader')
+        }),
+        ('Trade Details', {
+            'fields': (
+                'market',
+                'direction',
+                'leverage',
+                'duration',
+                'status',
+                'reference'
+            )
+        }),
+        ('Financial Details', {
+            'fields': (
+                'amount',
+                'entry_price',
+                'exit_price',
+                'profit_loss'
+            )
+        }),
+        ('Timestamps', {
+            'fields': (
+                'opened_at',
+                'closed_at',
+                'display_time_ago'
+            )
+        }),
+        ('Additional Info', {
+            'fields': ('notes',),
+            'classes': ('collapse',)
+        })
+    )
+    
+    def user_email(self, obj):
+        return obj.user.email if obj.user else '-'
+    user_email.short_description = 'User'
+    user_email.admin_order_field = 'user__email'
+    
+    def trader_name(self, obj):
+        return obj.trader.name if obj.trader else '-'
+    trader_name.short_description = 'Trader'
+    trader_name.admin_order_field = 'trader__name'
+    
+    def profit_loss_display(self, obj):
+        """Display profit/loss with color coding"""
+        color = 'green' if obj.profit_loss >= 0 else 'red'
+        symbol = '+' if obj.profit_loss >= 0 else ''
+        
+        # Format the number FIRST, then pass to format_html
+        formatted_value = f"{symbol}{float(obj.profit_loss):.2f}"
+        
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            formatted_value
+        )
+    profit_loss_display.short_description = 'Profit/Loss'
+    
+    def display_time_ago(self, obj):
+        """Safe wrapper for time_ago that handles None values"""
+        try:
+            return obj.time_ago
+        except (TypeError, AttributeError):
+            return "Not available"
+    display_time_ago.short_description = 'Time Ago'
 
 
 
@@ -95,34 +200,6 @@ class CustomUserAdmin(UserAdmin):
     readonly_fields = ('date_joined', 'last_login', 'account_id')
 
 
-# @admin.register(Transaction)
-# class TransactionAdmin(admin.ModelAdmin):
-#     """Admin configuration for Transaction model"""
-    
-#     list_display = (
-#         'reference', 'user', 'transaction_type', 
-#         'amount', 'status', 'created_at', 'receipt',
-#     )
-#     list_filter = ('transaction_type', 'status', 'created_at')
-#     search_fields = ('reference', 'user__email', 'description')
-#     ordering = ('-created_at',)
-#     readonly_fields = ('reference', 'created_at', 'updated_at')
-    
-#     fieldsets = (
-#         ('Transaction Details', {
-#             'fields': (
-#                 'user', 'transaction_type', 'amount', 
-#                 'status', 'reference', 'description'
-#             )
-#         }),
-#         ('Timestamps', {
-#             'fields': ('created_at', 'updated_at')
-#         }),
-#     )
-    
-#     def has_add_permission(self, request):
-#         """Allow admins to create transactions"""
-#         return True
 
 @admin.register(Portfolio)
 class PortfolioAdmin(admin.ModelAdmin):
@@ -235,15 +312,7 @@ class StockAdmin(admin.ModelAdmin):
         self.message_user(request, f'{queryset.count()} stocks unfeatured')
 
 
-# In admin.py
 
-
-# In admin.py - FIXED VERSION
-
-from django.contrib import admin
-from django.utils.html import format_html
-from decimal import Decimal
-from .models import UserStockPosition, Stock
 
 @admin.register(UserStockPosition)
 class UserStockPositionAdmin(admin.ModelAdmin):
@@ -722,103 +791,6 @@ class TraderAdmin(admin.ModelAdmin):
     def mark_as_inactive(self, request, queryset):
         updated = queryset.update(is_active=False)
         self.message_user(request, f'{updated} trader(s) marked as inactive.')
-
-
-# @admin.register(TraderPortfolio)
-# class TraderPortfolioAdmin(admin.ModelAdmin):
-#     """Admin configuration for TraderPortfolio model"""
-    
-#     list_display = [
-#         'trader',
-#         'market',
-#         'direction',
-#         'invested',
-#         'profit_loss_display',
-#         'value',
-#         'is_active',
-#         'opened_at'
-#     ]
-    
-#     list_filter = [
-#         'direction',
-#         'is_active',
-#         'opened_at',
-#         'trader__name'
-#     ]
-    
-#     search_fields = [
-#         'trader__name',
-#         'trader__username',
-#         'market'
-#     ]
-    
-#     list_editable = [
-#         'is_active'
-#     ]
-    
-#     readonly_fields = [
-#         'opened_at'
-#     ]
-    
-#     fieldsets = (
-#         ('Position Details', {
-#             'fields': (
-#                 'trader',
-#                 'market',
-#                 'direction',
-#                 'is_active'
-#             )
-#         }),
-#         ('Financial Data', {
-#             'fields': (
-#                 'invested',
-#                 'profit_loss',
-#                 'value'
-#             )
-#         }),
-#         ('Timestamp', {
-#             'fields': (
-#                 'opened_at',
-#             )
-#         })
-#     )
-    
-#     ordering = ['-opened_at']
-    
-#     date_hierarchy = 'opened_at'
-    
-#     actions = ['close_positions', 'open_positions']
-    
-#     def profit_loss_display(self, obj):
-#         """Display profit/loss with color coding"""
-#         color = "green" if obj.profit_loss >= 0 else "red"
-#         # Format the number FIRST into a string
-#         formatted_value = "{:.2f}%".format(float(obj.profit_loss))
-#         # Then pass the formatted string to format_html
-#         return format_html(
-#             '<span style="color: {}; font-weight: bold;">{}</span>',
-#             color,
-#             formatted_value
-#         )
-#     profit_loss_display.short_description = 'Profit/Loss %'
-    
-#     def get_queryset(self, request):
-#         """Optimize queryset with select_related"""
-#         qs = super().get_queryset(request)
-#         return qs.select_related('trader')
-    
-#     @admin.action(description='Close selected positions')
-#     def close_positions(self, request, queryset):
-#         updated = queryset.update(is_active=False)
-#         self.message_user(request, f'{updated} position(s) closed.')
-    
-#     @admin.action(description='Open selected positions')
-#     def open_positions(self, request, queryset):
-#         updated = queryset.update(is_active=True)
-#         self.message_user(request, f'{updated} position(s) opened.')
-
-
-# IMPORTANT: Remove these lines from your admin.py:
 
 
 
