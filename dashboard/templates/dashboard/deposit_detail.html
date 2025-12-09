@@ -4,17 +4,17 @@
 {% block page_subtitle %}Review deposit request{% endblock %}
 
 {% block content %}
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-4 md:gap-6 px-2 sm:px-0">
     <!-- Main Content - Deposit Information -->
-    <div class="lg:col-span-2 space-y-6">
+    <div class="lg:col-span-2 space-y-4 md:space-y-6">
         <!-- Deposit Overview Card -->
-        <div class="bg-white rounded-xl shadow-lg p-6">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-xl font-bold text-gray-800">
+        <div class="bg-white rounded-xl shadow-lg p-4 sm:p-5 md:p-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-3">
+                <h3 class="text-base sm:text-lg md:text-xl font-bold text-gray-800">
                     <i class="fas fa-arrow-down mr-2 text-green-600"></i>
                     Deposit Information
                 </h3>
-                <span class="px-4 py-2 rounded-full text-sm font-semibold
+                <span class="px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-semibold self-start sm:self-auto
                     {% if deposit.status == 'completed' %}bg-green-100 text-green-800
                     {% elif deposit.status == 'pending' %}bg-yellow-100 text-yellow-800
                     {% else %}bg-red-100 text-red-800{% endif %}">
@@ -22,56 +22,56 @@
                 </span>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
                 <!-- Amount -->
-                <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-                    <p class="text-sm text-green-700 mb-1">Deposit Amount</p>
-                    <p class="text-3xl font-bold text-green-600">${{ deposit.amount|floatformat:2 }}</p>
+                <div class="bg-green-50 p-3 sm:p-4 rounded-lg border border-green-200">
+                    <p class="text-xs sm:text-sm text-green-700 mb-1">Deposit Amount</p>
+                    <p class="text-xl sm:text-2xl md:text-3xl font-bold text-green-600">${{ deposit.amount|floatformat:2 }}</p>
                 </div>
                 
                 <!-- Currency -->
-                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <p class="text-sm text-blue-700 mb-1">Currency</p>
-                    <p class="text-3xl font-bold text-blue-600">{{ deposit.currency|upper }}</p>
+                <div class="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
+                    <p class="text-xs sm:text-sm text-blue-700 mb-1">Currency</p>
+                    <p class="text-xl sm:text-2xl md:text-3xl font-bold text-blue-600">{{ deposit.currency|upper }}</p>
                 </div>
                 
                 <!-- Reference Number -->
-                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <p class="text-sm text-gray-600 mb-1">Reference Number</p>
-                    <p class="text-lg font-mono font-bold text-gray-900">{{ deposit.reference }}</p>
+                <div class="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                    <p class="text-xs sm:text-sm text-gray-600 mb-1">Reference Number</p>
+                    <p class="text-xs sm:text-sm md:text-lg font-mono font-bold text-gray-900 break-all">{{ deposit.reference }}</p>
                 </div>
                 
                 <!-- Transaction ID -->
-                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <p class="text-sm text-gray-600 mb-1">Transaction ID</p>
-                    <p class="text-lg font-mono font-bold text-gray-900">#{{ deposit.id }}</p>
+                <div class="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                    <p class="text-xs sm:text-sm text-gray-600 mb-1">Transaction ID</p>
+                    <p class="text-xs sm:text-sm md:text-lg font-mono font-bold text-gray-900">#{{ deposit.id }}</p>
                 </div>
                 
                 <!-- Payment Method -->
-                <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                    <p class="text-sm text-purple-700 mb-1">Payment Method</p>
-                    <p class="text-lg font-semibold text-purple-900">{{ deposit.payment_method|default:"Bank Transfer"|title }}</p>
+                <div class="bg-purple-50 p-3 sm:p-4 rounded-lg border border-purple-200">
+                    <p class="text-xs sm:text-sm text-purple-700 mb-1">Payment Method</p>
+                    <p class="text-sm sm:text-base md:text-lg font-semibold text-purple-900">{{ deposit.payment_method|default:"Bank Transfer"|title }}</p>
                 </div>
                 
                 <!-- Created Date -->
-                <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-                    <p class="text-sm text-indigo-700 mb-1">Submitted On</p>
-                    <p class="text-lg font-semibold text-indigo-900">{{ deposit.created_at|date:"F d, Y" }}</p>
-                    <p class="text-sm text-indigo-600">{{ deposit.created_at|date:"h:i A" }}</p>
+                <div class="bg-indigo-50 p-3 sm:p-4 rounded-lg border border-indigo-200">
+                    <p class="text-xs sm:text-sm text-indigo-700 mb-1">Submitted On</p>
+                    <p class="text-sm sm:text-base md:text-lg font-semibold text-indigo-900">{{ deposit.created_at|date:"F d, Y" }}</p>
+                    <p class="text-xs sm:text-sm text-indigo-600">{{ deposit.created_at|date:"h:i A" }}</p>
                 </div>
             </div>
             
             <!-- Payment Receipt -->
             {% if deposit.receipt %}
-            <div class="mt-6 border-t pt-6">
-                <h4 class="text-lg font-semibold text-gray-800 mb-4">
+            <div class="mt-4 sm:mt-6 border-t pt-4 sm:pt-6">
+                <h4 class="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">
                     <i class="fas fa-receipt mr-2 text-blue-600"></i>
                     Payment Receipt
                 </h4>
-                <div class="bg-gray-100 p-4 rounded-lg">
+                <div class="bg-gray-100 p-3 sm:p-4 rounded-lg">
                     <img src="{{ deposit.receipt.url }}" alt="Payment Receipt" class="max-w-full h-auto rounded-lg shadow-lg">
-                    <a href="{{ deposit.receipt.url }}" target="_blank" class="mt-3 inline-flex items-center text-blue-600 hover:text-blue-700">
-                        <i class="fas fa-external-link-alt mr-2"></i>
+                    <a href="{{ deposit.receipt.url }}" target="_blank" class="mt-2 sm:mt-3 inline-flex items-center text-blue-600 hover:text-blue-700 text-xs sm:text-sm transition">
+                        <i class="fas fa-external-link-alt mr-1 sm:mr-2"></i>
                         View in New Tab
                     </a>
                 </div>
@@ -81,18 +81,18 @@
         
         <!-- Approval Form (if pending) -->
         {% if deposit.status == 'pending' %}
-        <div class="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-6">
-            <h3 class="text-lg font-bold text-yellow-900 mb-4">
+        <div class="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 sm:p-5 md:p-6">
+            <h3 class="text-sm sm:text-base md:text-lg font-bold text-yellow-900 mb-3 sm:mb-4">
                 <i class="fas fa-check-circle mr-2"></i>
                 Review & Approve Deposit
             </h3>
             
-            <form method="POST" class="space-y-4">
+            <form method="POST" class="space-y-3 sm:space-y-4">
                 {% csrf_token %}
                 
                 <!-- Status Selection -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
                         Decision
                     </label>
                     {{ form.status }}
@@ -100,7 +100,7 @@
                 
                 <!-- Admin Notes -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
                         Admin Notes (Optional)
                     </label>
                     {{ form.admin_notes }}
@@ -109,7 +109,7 @@
                 <!-- Submit Button -->
                 <button 
                     type="submit" 
-                    class="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-bold text-lg"
+                    class="w-full px-4 sm:px-6 py-2 sm:py-2.5 md:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-bold text-sm sm:text-base md:text-lg"
                 >
                     <i class="fas fa-check mr-2"></i>
                     Submit Decision
@@ -120,45 +120,40 @@
     </div>
     
     <!-- Sidebar - User Information -->
-    <div class="lg:col-span-1 space-y-6">
+    <div class="lg:col-span-1 space-y-4 md:space-y-6">
         <!-- User Card -->
-        <div class="bg-white rounded-xl shadow-lg p-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">
+        <div class="bg-white rounded-xl shadow-lg p-4 sm:p-5 md:p-6">
+            <h3 class="text-sm sm:text-base md:text-lg font-bold text-gray-800 mb-3 sm:mb-4">
                 <i class="fas fa-user mr-2 text-blue-600"></i>
                 User Information
             </h3>
             
-            <div class="flex flex-col items-center mb-6">
-                <div class="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl mb-3">
+            <div class="flex flex-col items-center mb-4 sm:mb-6">
+                <div class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg sm:text-xl md:text-2xl mb-2 sm:mb-3">
                     {{ deposit.user.email|first|upper }}
                 </div>
-                <h4 class="text-lg font-bold text-gray-900">{{ deposit.user.email }}</h4>
-                <p class="text-sm text-gray-600">Account ID: #{{ deposit.user.account_id }}</p>
+                <h4 class="text-sm sm:text-base md:text-lg font-bold text-gray-900 text-center break-words max-w-full px-2">{{ deposit.user.email }}</h4>
+                <p class="text-xs sm:text-sm text-gray-600">Account ID: #{{ deposit.user.account_id }}</p>
             </div>
             
-            <div class="space-y-3 border-t pt-4">
-                <div class="flex justify-between">
-                    <span class="text-sm text-gray-600">Full Name:</span>
-                    <span class="text-sm font-semibold text-gray-900">
+            <div class="space-y-2 sm:space-y-3 border-t pt-3 sm:pt-4">
+                <div class="flex justify-between text-xs sm:text-sm">
+                    <span class="text-gray-600">Full Name:</span>
+                    <span class="font-semibold text-gray-900 text-right truncate max-w-[60%] sm:max-w-[150px]">
                         {{ deposit.user.first_name }} {{ deposit.user.last_name }}
                     </span>
                 </div>
                 
-                <div class="flex justify-between">
-                    <span class="text-sm text-gray-600">Current Balance:</span>
-                    <span class="text-sm font-bold text-green-600">${{ deposit.user.account_balance|floatformat:2 }}</span>
+                <div class="flex justify-between text-xs sm:text-sm">
+                    <span class="text-gray-600">Current Balance:</span>
+                    <span class="font-bold text-green-600">${{ deposit.user.balance|floatformat:2 }}</span>
                 </div>
                 
-                <div class="flex justify-between">
-                    <span class="text-sm text-gray-600">Total Profit:</span>
-                    <span class="text-sm font-bold {% if deposit.user.profit >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
-                        ${{ deposit.user.profit|floatformat:2 }}
-                    </span>
-                </div>
                 
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600">Status:</span>
-                    <div class="space-y-1">
+                
+                <div class="flex justify-between items-center text-xs sm:text-sm">
+                    <span class="text-gray-600">Status:</span>
+                    <div class="space-y-1 text-right">
                         {% if deposit.user.is_verified %}
                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             <i class="fas fa-check mr-1"></i>Verified
@@ -182,32 +177,32 @@
                 </div>
             </div>
             
-            <div class="mt-6 pt-4 border-t">
+            <div class="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t">
                 <a 
                     href="{% url 'dashboard:user_detail' deposit.user.id %}" 
-                    class="block w-full text-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
+                    class="block w-full text-center px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold text-xs sm:text-sm"
                 >
-                    <i class="fas fa-user-circle mr-2"></i>
+                    <i class="fas fa-user-circle mr-1 sm:mr-2"></i>
                     View Full Profile
                 </a>
             </div>
         </div>
         
         <!-- Quick Actions -->
-        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6">
-            <h3 class="text-lg font-bold text-blue-900 mb-4">
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 sm:p-5 md:p-6">
+            <h3 class="text-sm sm:text-base md:text-lg font-bold text-blue-900 mb-3 sm:mb-4">
                 <i class="fas fa-bolt mr-2"></i>
                 Quick Actions
             </h3>
             
             <div class="space-y-2">
-                <a href="{% url 'dashboard:deposits' %}" class="block w-full text-center px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold text-sm">
-                    <i class="fas fa-list mr-2"></i>
+                <a href="{% url 'dashboard:deposits' %}" class="block w-full text-center px-3 sm:px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold text-xs sm:text-sm">
+                    <i class="fas fa-list mr-1 sm:mr-2"></i>
                     Back to All Deposits
                 </a>
                 
-                <a href="{% url 'dashboard:transactions' %}" class="block w-full text-center px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold text-sm">
-                    <i class="fas fa-exchange-alt mr-2"></i>
+                <a href="{% url 'dashboard:transactions' %}" class="block w-full text-center px-3 sm:px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold text-xs sm:text-sm">
+                    <i class="fas fa-exchange-alt mr-1 sm:mr-2"></i>
                     View All Transactions
                 </a>
             </div>

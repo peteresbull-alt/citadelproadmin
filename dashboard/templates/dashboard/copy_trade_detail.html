@@ -4,110 +4,110 @@
 {% block page_subtitle %}View copy trade information{% endblock %}
 
 {% block content %}
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 px-2 sm:px-0">
     <!-- Main Content - Trade Information -->
     <div class="lg:col-span-2 space-y-4 md:space-y-6">
         <!-- Trade Overview Card -->
-        <div class="bg-white rounded-xl shadow-lg p-4 md:p-6">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-lg md:text-xl font-bold text-gray-800">
+        <div class="bg-white rounded-xl shadow-lg p-4 sm:p-5 md:p-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-3">
+                <h3 class="text-base sm:text-lg md:text-xl font-bold text-gray-800">
                     <i class="fas fa-copy mr-2 text-blue-600"></i>
                     Copy Trade Details
                 </h3>
-                <span class="px-3 md:px-4 py-1 md:py-2 rounded-full text-xs md:text-sm font-semibold
+                <span class="px-3 md:px-4 py-1 md:py-2 rounded-full text-xs md:text-sm font-semibold self-start sm:self-auto
                     {% if copy_trade.status == 'open' %}bg-yellow-100 text-yellow-800{% else %}bg-gray-100 text-gray-800{% endif %}">
                     <i class="fas fa-{% if copy_trade.status == 'open' %}clock{% else %}check{% endif %} mr-1"></i>
                     {{ copy_trade.status|capfirst }}
                 </span>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
                 <!-- Market -->
-                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div class="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
                     <p class="text-xs md:text-sm text-blue-700 mb-1">Market / Asset</p>
-                    <p class="text-2xl md:text-3xl font-bold text-blue-600">{{ copy_trade.market }}</p>
+                    <p class="text-xl sm:text-2xl md:text-3xl font-bold text-blue-600 truncate">{{ copy_trade.market }}</p>
                 </div>
                 
                 <!-- Direction -->
-                <div class="bg-{% if copy_trade.direction == 'buy' %}green{% else %}red{% endif %}-50 p-4 rounded-lg border border-{% if copy_trade.direction == 'buy' %}green{% else %}red{% endif %}-200">
+                <div class="bg-{% if copy_trade.direction == 'buy' %}green{% else %}red{% endif %}-50 p-3 sm:p-4 rounded-lg border border-{% if copy_trade.direction == 'buy' %}green{% else %}red{% endif %}-200">
                     <p class="text-xs md:text-sm text-{% if copy_trade.direction == 'buy' %}green{% else %}red{% endif %}-700 mb-1">Direction</p>
-                    <p class="text-2xl md:text-3xl font-bold text-{% if copy_trade.direction == 'buy' %}green{% else %}red{% endif %}-600">
-                        <i class="fas fa-arrow-{% if copy_trade.direction == 'buy' %}up{% else %}down{% endif %} mr-2"></i>
+                    <p class="text-xl sm:text-2xl md:text-3xl font-bold text-{% if copy_trade.direction == 'buy' %}green{% else %}red{% endif %}-600">
+                        <i class="fas fa-arrow-{% if copy_trade.direction == 'buy' %}up{% else %}down{% endif %} mr-1 sm:mr-2"></i>
                         {{ copy_trade.direction|upper }}
                     </p>
                 </div>
                 
                 <!-- Amount -->
-                <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <div class="bg-purple-50 p-3 sm:p-4 rounded-lg border border-purple-200">
                     <p class="text-xs md:text-sm text-purple-700 mb-1">Investment Amount</p>
-                    <p class="text-2xl md:text-3xl font-bold text-purple-600">${{ copy_trade.amount|floatformat:2 }}</p>
+                    <p class="text-xl sm:text-2xl md:text-3xl font-bold text-purple-600">${{ copy_trade.amount|floatformat:2 }}</p>
                 </div>
                 
                 <!-- Profit/Loss -->
-                <div class="bg-{% if copy_trade.is_profit %}green{% else %}red{% endif %}-50 p-4 rounded-lg border border-{% if copy_trade.is_profit %}green{% else %}red{% endif %}-200">
+                <div class="bg-{% if copy_trade.is_profit %}green{% else %}red{% endif %}-50 p-3 sm:p-4 rounded-lg border border-{% if copy_trade.is_profit %}green{% else %}red{% endif %}-200">
                     <p class="text-xs md:text-sm text-{% if copy_trade.is_profit %}green{% else %}red{% endif %}-700 mb-1">Profit / Loss</p>
-                    <p class="text-2xl md:text-3xl font-bold text-{% if copy_trade.is_profit %}green{% else %}red{% endif %}-600">
+                    <p class="text-xl sm:text-2xl md:text-3xl font-bold text-{% if copy_trade.is_profit %}green{% else %}red{% endif %}-600">
                         {% if copy_trade.is_profit %}+{% endif %}${{ copy_trade.profit_loss|floatformat:2 }}
                     </p>
                 </div>
                 
                 <!-- Leverage -->
-                <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <div class="bg-orange-50 p-3 sm:p-4 rounded-lg border border-orange-200">
                     <p class="text-xs md:text-sm text-orange-700 mb-1">Leverage</p>
-                    <p class="text-2xl md:text-3xl font-bold text-orange-600">{{ copy_trade.leverage }}</p>
+                    <p class="text-xl sm:text-2xl md:text-3xl font-bold text-orange-600">{{ copy_trade.leverage }}</p>
                 </div>
                 
                 <!-- Duration -->
-                <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                <div class="bg-indigo-50 p-3 sm:p-4 rounded-lg border border-indigo-200">
                     <p class="text-xs md:text-sm text-indigo-700 mb-1">Duration</p>
-                    <p class="text-lg md:text-xl font-bold text-indigo-600">{{ copy_trade.duration }}</p>
+                    <p class="text-base sm:text-lg md:text-xl font-bold text-indigo-600">{{ copy_trade.duration }}</p>
                 </div>
             </div>
             
             <!-- Price Information -->
-            <div class="mt-6 border-t pt-6">
-                <h4 class="text-base md:text-lg font-semibold text-gray-800 mb-4">
+            <div class="mt-4 sm:mt-6 border-t pt-4 sm:pt-6">
+                <h4 class="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">
                     <i class="fas fa-chart-line mr-2 text-blue-600"></i>
                     Price Details
                 </h4>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-gray-50 p-4 rounded-lg">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                    <div class="bg-gray-50 p-3 sm:p-4 rounded-lg">
                         <p class="text-xs text-gray-600 mb-1">Entry Price</p>
-                        <p class="text-lg font-bold text-gray-900">${{ copy_trade.entry_price|floatformat:2 }}</p>
+                        <p class="text-base sm:text-lg font-bold text-gray-900">${{ copy_trade.entry_price|floatformat:2 }}</p>
                     </div>
                     
                     {% if copy_trade.exit_price %}
-                    <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="bg-gray-50 p-3 sm:p-4 rounded-lg">
                         <p class="text-xs text-gray-600 mb-1">Exit Price</p>
-                        <p class="text-lg font-bold text-gray-900">${{ copy_trade.exit_price|floatformat:2 }}</p>
+                        <p class="text-base sm:text-lg font-bold text-gray-900">${{ copy_trade.exit_price|floatformat:2 }}</p>
                     </div>
                     
-                    <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="bg-gray-50 p-3 sm:p-4 rounded-lg">
                         <p class="text-xs text-gray-600 mb-1">Price Difference</p>
-                        <p class="text-lg font-bold {% if copy_trade.exit_price > copy_trade.entry_price %}text-green-600{% else %}text-red-600{% endif %}">
+                        <p class="text-base sm:text-lg font-bold {% if copy_trade.exit_price > copy_trade.entry_price %}text-green-600{% else %}text-red-600{% endif %}">
                             {% if copy_trade.exit_price > copy_trade.entry_price %}+{% endif %}${{ copy_trade.exit_price|add:"-"|add:copy_trade.entry_price|floatformat:2 }}
                         </p>
                     </div>
                     {% else %}
-                    <div class="bg-yellow-50 p-4 rounded-lg col-span-2 border border-yellow-200">
+                    <div class="bg-yellow-50 p-3 sm:p-4 rounded-lg sm:col-span-2 border border-yellow-200">
                         <p class="text-xs text-yellow-700 mb-1"><i class="fas fa-info-circle mr-1"></i>Exit Price</p>
-                        <p class="text-sm font-semibold text-yellow-800">Trade is still open</p>
+                        <p class="text-xs sm:text-sm font-semibold text-yellow-800">Trade is still open</p>
                     </div>
                     {% endif %}
                 </div>
             </div>
             
             <!-- Timeline -->
-            <div class="mt-6 border-t pt-6">
-                <h4 class="text-base md:text-lg font-semibold text-gray-800 mb-4">
+            <div class="mt-4 sm:mt-6 border-t pt-4 sm:pt-6">
+                <h4 class="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">
                     <i class="fas fa-history mr-2 text-blue-600"></i>
                     Timeline
                 </h4>
-                <div class="space-y-3">
+                <div class="space-y-2 sm:space-y-3">
                     <div class="flex items-center">
-                        <div class="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
-                        <div class="flex-1">
-                            <p class="text-sm font-semibold text-gray-900">Trade Opened</p>
+                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-500 rounded-full mr-2 sm:mr-3 flex-shrink-0"></div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs sm:text-sm font-semibold text-gray-900">Trade Opened</p>
                             <p class="text-xs text-gray-600">{{ copy_trade.opened_at|date:"F d, Y - h:i A" }}</p>
                             <p class="text-xs text-gray-500">{{ copy_trade.time_ago }}</p>
                         </div>
@@ -115,9 +115,9 @@
                     
                     {% if copy_trade.closed_at %}
                     <div class="flex items-center">
-                        <div class="w-3 h-3 bg-gray-500 rounded-full mr-3"></div>
-                        <div class="flex-1">
-                            <p class="text-sm font-semibold text-gray-900">Trade Closed</p>
+                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-gray-500 rounded-full mr-2 sm:mr-3 flex-shrink-0"></div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs sm:text-sm font-semibold text-gray-900">Trade Closed</p>
                             <p class="text-xs text-gray-600">{{ copy_trade.closed_at|date:"F d, Y - h:i A" }}</p>
                         </div>
                     </div>
@@ -126,23 +126,23 @@
             </div>
             
             <!-- Reference & Notes -->
-            <div class="mt-6 border-t pt-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="mt-4 sm:mt-6 border-t pt-4 sm:pt-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                         <p class="text-xs text-gray-600 mb-1">Reference Number</p>
-                        <p class="text-sm font-mono font-bold text-gray-900 bg-gray-100 px-3 py-2 rounded">{{ copy_trade.reference }}</p>
+                        <p class="text-xs sm:text-sm font-mono font-bold text-gray-900 bg-gray-100 px-2 sm:px-3 py-1.5 sm:py-2 rounded break-all">{{ copy_trade.reference }}</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-600 mb-1">Trade ID</p>
-                        <p class="text-sm font-mono font-bold text-gray-900 bg-gray-100 px-3 py-2 rounded">#{{ copy_trade.id }}</p>
+                        <p class="text-xs sm:text-sm font-mono font-bold text-gray-900 bg-gray-100 px-2 sm:px-3 py-1.5 sm:py-2 rounded">#{{ copy_trade.id }}</p>
                     </div>
                 </div>
                 
                 {% if copy_trade.notes %}
-                <div class="mt-4">
+                <div class="mt-3 sm:mt-4">
                     <p class="text-xs text-gray-600 mb-2">Notes</p>
-                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <p class="text-sm text-gray-800">{{ copy_trade.notes }}</p>
+                    <div class="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                        <p class="text-xs sm:text-sm text-gray-800">{{ copy_trade.notes }}</p>
                     </div>
                 </div>
                 {% endif %}
@@ -153,26 +153,26 @@
     <!-- Sidebar - User & Trader Information -->
     <div class="lg:col-span-1 space-y-4 md:space-y-6">
         <!-- User Card -->
-        <div class="bg-white rounded-xl shadow-lg p-4 md:p-6">
-            <h3 class="text-base md:text-lg font-bold text-gray-800 mb-4">
+        <div class="bg-white rounded-xl shadow-lg p-4 sm:p-5 md:p-6">
+            <h3 class="text-sm sm:text-base md:text-lg font-bold text-gray-800 mb-3 sm:mb-4">
                 <i class="fas fa-user mr-2 text-blue-600"></i>
                 User Information
             </h3>
             
-            <div class="flex flex-col items-center mb-4">
-                <div class="w-16 h-16 md:w-20 md:h-20 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl md:text-2xl mb-3">
+            <div class="flex flex-col items-center mb-3 sm:mb-4">
+                <div class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg sm:text-xl md:text-2xl mb-2 sm:mb-3">
                     {{ copy_trade.user.email|first|upper }}
                 </div>
-                <h4 class="text-base md:text-lg font-bold text-gray-900 text-center break-words max-w-full">{{ copy_trade.user.email }}</h4>
+                <h4 class="text-sm sm:text-base md:text-lg font-bold text-gray-900 text-center break-words max-w-full px-2">{{ copy_trade.user.email }}</h4>
                 <p class="text-xs md:text-sm text-gray-600">ID: #{{ copy_trade.user.account_id }}</p>
             </div>
             
-            <div class="space-y-2 border-t pt-4">
-                <div class="flex justify-between text-sm">
+            <div class="space-y-2 border-t pt-3 sm:pt-4 text-xs sm:text-sm">
+                <div class="flex justify-between">
                     <span class="text-gray-600">Balance:</span>
-                    <span class="font-bold text-blue-600">${{ copy_trade.user.account_balance|floatformat:2 }}</span>
+                    <span class="font-bold text-blue-600">${{ copy_trade.user.balance|floatformat:2 }}</span>
                 </div>
-                <div class="flex justify-between text-sm">
+                <div class="flex justify-between">
                     <span class="text-gray-600">Total Profit:</span>
                     <span class="font-bold {% if copy_trade.user.profit >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
                         ${{ copy_trade.user.profit|floatformat:2 }}
@@ -180,59 +180,56 @@
                 </div>
             </div>
             
-            <div class="mt-4 pt-4 border-t">
+            <div class="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t">
                 <a 
                     href="{% url 'dashboard:user_detail' copy_trade.user.id %}" 
-                    class="block w-full text-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold text-sm"
+                    class="block w-full text-center px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold text-xs sm:text-sm"
                 >
-                    <i class="fas fa-user-circle mr-2"></i>
+                    <i class="fas fa-user-circle mr-1 sm:mr-2"></i>
                     View User Profile
                 </a>
             </div>
         </div>
         
         <!-- Trader Card -->
-        <div class="bg-white rounded-xl shadow-lg p-4 md:p-6">
-            <h3 class="text-base md:text-lg font-bold text-gray-800 mb-4">
+        <div class="bg-white rounded-xl shadow-lg p-4 sm:p-5 md:p-6">
+            <h3 class="text-sm sm:text-base md:text-lg font-bold text-gray-800 mb-3 sm:mb-4">
                 <i class="fas fa-user-tie mr-2 text-purple-600"></i>
                 Trader Information
             </h3>
             
-            <div class="flex flex-col items-center mb-4">
-                <div class="w-16 h-16 md:w-20 md:h-20 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl md:text-2xl mb-3">
+            <div class="flex flex-col items-center mb-3 sm:mb-4">
+                <div class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg sm:text-xl md:text-2xl mb-2 sm:mb-3">
                     {{ copy_trade.trader.name|first|upper }}
                 </div>
-                <h4 class="text-base md:text-lg font-bold text-gray-900 text-center">{{ copy_trade.trader.name }}</h4>
+                <h4 class="text-sm sm:text-base md:text-lg font-bold text-gray-900 text-center">{{ copy_trade.trader.name }}</h4>
                 <p class="text-xs md:text-sm text-gray-600">Professional Trader</p>
             </div>
             
-            <div class="space-y-2 border-t pt-4">
-                <div class="flex justify-between text-sm">
+            <div class="space-y-2 border-t pt-3 sm:pt-4 text-xs sm:text-sm">
+                <div class="flex justify-between">
                     <span class="text-gray-600">Win Rate:</span>
                     <span class="font-bold text-green-600">{{ copy_trade.trader.win_rate|default:"N/A" }}%</span>
                 </div>
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Total Profit:</span>
-                    <span class="font-bold text-green-600">${{ copy_trade.trader.total_profit|default:"0.00"|floatformat:2 }}</span>
-                </div>
+                
             </div>
         </div>
         
         <!-- Quick Actions -->
-        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 md:p-6">
-            <h3 class="text-base md:text-lg font-bold text-blue-900 mb-4">
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 sm:p-5 md:p-6">
+            <h3 class="text-sm sm:text-base md:text-lg font-bold text-blue-900 mb-3 sm:mb-4">
                 <i class="fas fa-bolt mr-2"></i>
                 Quick Actions
             </h3>
             
             <div class="space-y-2">
-                <a href="{% url 'dashboard:copy_trades_list' %}" class="block w-full text-center px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold text-xs md:text-sm">
-                    <i class="fas fa-list mr-2"></i>
+                <a href="{% url 'dashboard:copy_trades_list' %}" class="block w-full text-center px-3 sm:px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold text-xs md:text-sm">
+                    <i class="fas fa-list mr-1 sm:mr-2"></i>
                     All Copy Trades
                 </a>
                 
-                <a href="{% url 'dashboard:add_copy_trade' %}" class="block w-full text-center px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold text-xs md:text-sm">
-                    <i class="fas fa-plus mr-2"></i>
+                <a href="{% url 'dashboard:add_copy_trade' %}" class="block w-full text-center px-3 sm:px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold text-xs md:text-sm">
+                    <i class="fas fa-plus mr-1 sm:mr-2"></i>
                     Add New Trade
                 </a>
             </div>
@@ -240,6 +237,3 @@
     </div>
 </div>
 {% endblock %}
-
-
-

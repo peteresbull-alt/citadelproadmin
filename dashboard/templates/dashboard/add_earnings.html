@@ -63,36 +63,6 @@
         </form>
     </div>
     
-    <!-- Recent Earnings -->
-    {% if recent_earnings %}
-    <div class="mt-8 bg-white rounded-xl shadow-lg p-8">
-        <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-            <i class="fas fa-history mr-2 text-gray-600"></i>
-            Recent Earnings Added
-        </h3>
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">User</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Amount</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Description</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    {% for earning in recent_earnings %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-3 text-sm text-gray-800">{{ earning.user.email }}</td>
-                        <td class="px-4 py-3 text-sm font-bold text-green-600">${{ earning.amount|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-600">{{ earning.description }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-600">{{ earning.created_at|date:"M d, Y H:i" }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    {% endif %}
+    
 </div>
 {% endblock %}
