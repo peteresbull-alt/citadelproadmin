@@ -1,0 +1,350 @@
+{% extends 'dashboard/base.html' %}
+
+{% block page_title %}Edit Pro Trader{% endblock %}
+{% block page_subtitle %}Update trader with easy dropdowns{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-2 sm:px-4">
+    <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 md:p-8">
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- Basic Information -->
+            <div>
+                <h3 class="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-gray-200 flex items-center">
+                    <i class="fas fa-user mr-2 text-purple-600"></i>
+                    Basic Information
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Trader Name *</label>
+                        {{ form.name }}
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Username *</label>
+                        {{ form.username }}
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-image text-purple-600 mr-1"></i>
+                            Trader Avatar
+                        </label>
+                        {% if trader.avatar %}
+                        <div class="mb-2">
+                            <img src="{{ trader.avatar.url }}" alt="{{ trader.name }}" class="w-20 h-20 rounded-full object-cover border-2 border-purple-300">
+                            <p class="text-xs text-gray-500 mt-1">Current avatar</p>
+                        </div>
+                        {% endif %}
+                        {{ form.avatar }}
+                        <p class="text-xs text-gray-500 mt-1">Upload new profile picture (optional)</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-flag text-red-600 mr-1"></i>
+                            Country Flag
+                        </label>
+                        {% if trader.country_flag %}
+                        <div class="mb-2">
+                            <img src="{{ trader.country_flag.url }}" alt="{{ trader.country }}" class="w-16 h-12 object-cover border border-gray-300 rounded">
+                            <p class="text-xs text-gray-500 mt-1">Current flag</p>
+                        </div>
+                        {% endif %}
+                        {{ form.country_flag }}
+                        <p class="text-xs text-gray-500 mt-1">Upload new flag (optional)</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-globe text-blue-600 mr-1"></i>
+                            Country * (Dropdown)
+                        </label>
+                        {{ form.country }}
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-medal text-yellow-600 mr-1"></i>
+                            Badge * (Dropdown)
+                        </label>
+                        {{ form.badge }}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Capital & Gain (Dropdowns) -->
+            <div>
+                <h3 class="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-gray-200 flex items-center">
+                    <i class="fas fa-dollar-sign mr-2 text-green-600"></i>
+                    Capital & Gain
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                    <div class="space-y-2 sm:space-y-3">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-money-bill text-green-600 mr-1"></i>
+                                Capital (Dropdown)
+                            </label>
+                            {{ form.capital_dropdown }}
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">OR Custom Amount</label>
+                            {{ form.capital }}
+                        </div>
+                    </div>
+                    <div class="space-y-2 sm:space-y-3">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-chart-line text-blue-600 mr-1"></i>
+                                Total Gain % (Dropdown)
+                            </label>
+                            {{ form.gain_dropdown }}
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">OR Exact %</label>
+                            {{ form.gain }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Risk & Trade Time -->
+            <div>
+                <h3 class="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-gray-200 flex items-center">
+                    <i class="fas fa-shield-alt mr-2 text-orange-600"></i>
+                    Risk & Time
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-exclamation-triangle text-orange-600 mr-1"></i>
+                            Risk Level * (Dropdown 1-10)
+                        </label>
+                        {{ form.risk }}
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-clock text-purple-600 mr-1"></i>
+                            Avg Trade Time * (Dropdown)
+                        </label>
+                        {{ form.avg_trade_time }}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Copiers & Trades -->
+            <div>
+                <h3 class="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-gray-200 flex items-center">
+                    <i class="fas fa-users mr-2 text-blue-600"></i>
+                    Copiers & Trades
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                    <div class="space-y-2 sm:space-y-3">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-users text-blue-600 mr-1"></i>
+                                Copiers (Dropdown)
+                            </label>
+                            {{ form.copiers_range }}
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">OR Exact Number</label>
+                            {{ form.copiers }}
+                        </div>
+                    </div>
+                    <div class="space-y-2 sm:space-y-3">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-chart-line text-green-600 mr-1"></i>
+                                Trades (Dropdown)
+                            </label>
+                            {{ form.trades_range }}
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">OR Exact Number</label>
+                            {{ form.trades }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Avg Profit & Loss -->
+            <div>
+                <h3 class="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-gray-200 flex items-center">
+                    <i class="fas fa-percent mr-2 text-green-600"></i>
+                    Profit & Loss Percentages
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                    <div class="space-y-2 sm:space-y-3">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-arrow-up text-green-600 mr-1"></i>
+                                Avg Profit % (Dropdown)
+                            </label>
+                            {{ form.avg_profit_dropdown }}
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">OR Exact %</label>
+                            {{ form.avg_profit_percent }}
+                        </div>
+                    </div>
+                    <div class="space-y-2 sm:space-y-3">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-arrow-down text-red-600 mr-1"></i>
+                                Avg Loss % (Dropdown)
+                            </label>
+                            {{ form.avg_loss_dropdown }}
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">OR Exact %</label>
+                            {{ form.avg_loss_percent }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Wins & Losses -->
+            <div>
+                <h3 class="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-gray-200 flex items-center">
+                    <i class="fas fa-trophy mr-2 text-yellow-600"></i>
+                    Wins & Losses
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                    <div class="space-y-2 sm:space-y-3">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-check-circle text-green-600 mr-1"></i>
+                                Total Wins (Dropdown)
+                            </label>
+                            {{ form.total_wins_dropdown }}
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">OR Exact Number</label>
+                            {{ form.total_wins }}
+                        </div>
+                    </div>
+                    <div class="space-y-2 sm:space-y-3">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-times-circle text-red-600 mr-1"></i>
+                                Total Losses (Dropdown)
+                            </label>
+                            {{ form.total_losses_dropdown }}
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">OR Exact Number</label>
+                            {{ form.total_losses }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Optional Stats -->
+            <div>
+                <h3 class="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-gray-200 flex items-center">
+                    <i class="fas fa-info-circle mr-2 text-blue-600"></i>
+                    Additional Stats (Optional)
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                    <!-- Subscribers -->
+                    <div class="space-y-2 sm:space-y-3">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-user-friends text-blue-600 mr-1"></i>
+                                Subscribers (Dropdown)
+                            </label>
+                            {{ form.subscribers_range }}
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">OR Exact Number</label>
+                            {{ form.subscribers }}
+                        </div>
+                    </div>
+                    
+                    <!-- Current Positions -->
+                    <div class="space-y-2 sm:space-y-3">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-layer-group text-purple-600 mr-1"></i>
+                                Positions (Dropdown)
+                            </label>
+                            {{ form.current_positions_range }}
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">OR Exact Number</label>
+                            {{ form.current_positions }}
+                        </div>
+                    </div>
+                    
+                    <!-- Expert Rating -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-star text-yellow-600 mr-1"></i>
+                            Expert Rating (Dropdown)
+                        </label>
+                        {{ form.expert_rating }}
+                    </div>
+                    
+                    <!-- Return YTD -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Return YTD %</label>
+                        {{ form.return_ytd }}
+                    </div>
+                    
+                    <!-- Avg Score 7D -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Avg Score (7 Days)</label>
+                        {{ form.avg_score_7d }}
+                    </div>
+                    
+                    <!-- Profitable Weeks -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Profitable Weeks %</label>
+                        {{ form.profitable_weeks }}
+                    </div>
+                    
+                    <!-- Min Account Threshold -->
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Min Account Balance</label>
+                        {{ form.min_account_threshold }}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Status -->
+            <div class="flex items-center p-3 sm:p-4 bg-gray-50 rounded-lg">
+                {{ form.is_active }}
+                <label class="ml-2 text-xs sm:text-sm font-semibold text-gray-700">Active (Available for Copying)</label>
+            </div>
+            
+            <!-- Submit Buttons -->
+            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <button 
+                    type="submit" 
+                    class="flex-1 px-4 sm:px-6 py-3 sm:py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-bold text-sm sm:text-base md:text-lg"
+                >
+                    <i class="fas fa-save mr-2"></i>
+                    Save Changes
+                </button>
+                <a 
+                    href="{% url 'dashboard:traders_list' %}"
+                    class="flex-1 sm:flex-none px-4 sm:px-6 py-3 sm:py-4 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition font-bold text-sm sm:text-base md:text-lg text-center"
+                >
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Info Alert -->
+<div class="max-w-6xl mx-auto mt-4 px-2 sm:px-4">
+    <div class="bg-blue-50 border-2 border-blue-400 rounded-lg p-3 sm:p-4">
+        <div class="flex items-start">
+            <i class="fas fa-info-circle text-blue-600 text-lg sm:text-xl mr-2 sm:mr-3 mt-1 flex-shrink-0"></i>
+            <div class="text-xs sm:text-sm text-blue-900">
+                <p class="font-bold mb-1">💡 Pro Tip: Use Dropdowns for Quick Entry!</p>
+                <p>Select from dropdown options for instant values, or enter exact numbers in the custom fields below each dropdown.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

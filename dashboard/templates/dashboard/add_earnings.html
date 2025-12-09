@@ -1,0 +1,98 @@
+{% extends 'dashboard/base.html' %}
+
+{% block page_title %}Add Earnings{% endblock %}
+{% block page_subtitle %}Add earnings to user account{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+            <i class="fas fa-dollar-sign mr-3 text-green-600"></i>
+            Add Earnings
+        </h2>
+        
+        <form method="POST" action="{% url 'dashboard:add_earnings' %}">
+            {% csrf_token %}
+            
+            <div class="space-y-6">
+                <!-- User Email -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-user mr-2 text-green-600"></i>
+                        Select User *
+                    </label>
+                    {{ form.user_email }}
+                </div>
+                
+                <!-- Amount -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-coins mr-2 text-green-600"></i>
+                        Earnings Amount *
+                    </label>
+                    {{ form.amount }}
+                </div>
+                
+                <!-- Description -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-comment mr-2 text-green-600"></i>
+                        Description
+                    </label>
+                    {{ form.description }}
+                </div>
+            </div>
+            
+            <!-- Submit Buttons -->
+            <div class="flex space-x-4 mt-8">
+                <button 
+                    type="submit" 
+                    class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-lg hover:shadow-xl"
+                >
+                    <i class="fas fa-plus mr-2"></i>
+                    Add Earnings
+                </button>
+                <a 
+                    href="{% url 'dashboard:dashboard' %}" 
+                    class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 text-center"
+                >
+                    <i class="fas fa-times mr-2"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Recent Earnings -->
+    {% if recent_earnings %}
+    <div class="mt-8 bg-white rounded-xl shadow-lg p-8">
+        <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+            <i class="fas fa-history mr-2 text-gray-600"></i>
+            Recent Earnings Added
+        </h3>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">User</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Amount</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Description</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for earning in recent_earnings %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-sm text-gray-800">{{ earning.user.email }}</td>
+                        <td class="px-4 py-3 text-sm font-bold text-green-600">${{ earning.amount|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ earning.description }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ earning.created_at|date:"M d, Y H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

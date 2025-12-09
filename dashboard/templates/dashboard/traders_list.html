@@ -1,0 +1,204 @@
+{% extends 'dashboard/base.html' %}
+
+{% block page_title %}Pro Traders{% endblock %}
+{% block page_subtitle %}Manage professional traders{% endblock %}
+
+{% block content %}
+<!-- Search and Filter -->
+<div class="bg-white rounded-xl shadow-lg p-4 md:p-6 mb-6">
+    <form method="GET" class="space-y-3 md:space-y-0 md:grid md:grid-cols-4 md:gap-3">
+        <!-- Search Input -->
+        <div>
+            <input 
+                type="text" 
+                name="search" 
+                placeholder="Search..." 
+                value="{{ request.GET.search }}"
+                class="w-full px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
+            >
+        </div>
+        
+        <!-- Badge Filter -->
+        <div>
+            <select 
+                name="badge" 
+                class="w-full px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
+            >
+                <option value="">All Badges</option>
+                <option value="gold" {% if request.GET.badge == 'gold' %}selected{% endif %}>Gold</option>
+                <option value="silver" {% if request.GET.badge == 'silver' %}selected{% endif %}>Silver</option>
+                <option value="bronze" {% if request.GET.badge == 'bronze' %}selected{% endif %}>Bronze</option>
+            </select>
+        </div>
+        
+        <!-- Active Filter -->
+        <div>
+            <select 
+                name="active" 
+                class="w-full px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
+            >
+                <option value="">All Status</option>
+                <option value="active" {% if request.GET.active == 'active' %}selected{% endif %}>Active</option>
+                <option value="inactive" {% if request.GET.active == 'inactive' %}selected{% endif %}>Inactive</option>
+            </select>
+        </div>
+        
+        <!-- Search Button -->
+        <div>
+            <button 
+                type="submit" 
+                class="w-full px-6 py-2 md:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm md:text-base font-semibold"
+            >
+                <i class="fas fa-search mr-2"></i>Search
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Traders Table -->
+<div class="bg-white rounded-xl shadow-lg overflow-hidden">
+    <!-- Table Header -->
+    <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div class="flex items-center justify-between">
+            <h3 class="text-base md:text-lg font-semibold text-gray-800 flex items-center">
+                <i class="fas fa-user-tie mr-2 text-purple-600"></i>
+                Professional Traders
+                <span class="ml-2 text-sm font-normal text-gray-600">
+                    ({{ paginator.count }} total)
+                </span>
+            </h3>
+            <a 
+                href="{% url 'dashboard:add_trader' %}" 
+                class="px-3 md:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-xs md:text-sm font-semibold"
+            >
+                <i class="fas fa-user-plus mr-1 md:mr-2"></i>
+                <span class="hidden sm:inline">Add Trader</span>
+                <span class="sm:hidden">Add</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Table - NO HORIZONTAL SCROLL -->
+    <div class="overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-gray-50 border-b border-gray-200">
+                <tr>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trader</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Performance</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for trader in traders %}
+                <tr class="hover:bg-gray-50 transition">
+                    <!-- Trader Info -->
+                    <td class="px-4 md:px-6 py-4">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                {% if trader.avatar %}
+                                <div class="h-10 w-10 md:h-12 md:w-12 rounded-full overflow-hidden border-2 border-purple-300">
+                                    <img src="{{ trader.avatar.url }}" alt="{{ trader.name }}" class="h-full w-full object-cover">
+                                </div>
+                                {% else %}
+                                <div class="h-10 w-10 md:h-12 md:w-12 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-sm md:text-base">
+                                    {{ trader.name|first|upper }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="ml-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="text-sm md:text-base font-bold text-gray-900">
+                                        {{ trader.name|truncatechars:20 }}
+                                    </div>
+                                    {% if trader.country_flag %}
+                                    <img src="{{ trader.country_flag.url }}" alt="{{ trader.country }}" class="w-5 h-4 object-cover rounded border border-gray-300">
+                                    {% endif %}
+                                </div>
+                                <div class="text-xs text-gray-600">
+                                    {{ trader.username|truncatechars:15 }}
+                                </div>
+                                <div class="mt-1">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium 
+                                        {% if trader.badge == 'gold' %}bg-yellow-100 text-yellow-800
+                                        {% elif trader.badge == 'silver' %}bg-gray-200 text-gray-800
+                                        {% else %}bg-orange-100 text-orange-800{% endif %}">
+                                        <i class="fas fa-medal mr-1"></i>{{ trader.badge|capfirst }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    
+                    <!-- Performance -->
+                    <td class="px-4 md:px-6 py-4">
+                        <div class="space-y-1">
+                            <div class="text-base md:text-lg font-bold text-green-600">
+                                +{{ trader.gain }}%
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                Win: {{ trader.win_rate|floatformat:1 }}%
+                            </div>
+                            <div class="flex items-center gap-2 text-xs text-gray-600">
+                                <span><i class="fas fa-users text-blue-600"></i> {{ trader.copiers }}</span>
+                                <span><i class="fas fa-chart-line text-green-600"></i> {{ trader.trades }}</span>
+                            </div>
+                        </div>
+                    </td>
+                    
+                    <!-- Status -->
+                    <td class="px-4 md:px-6 py-4">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium 
+                            {% if trader.is_active %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                            {% if trader.is_active %}
+                                <i class="fas fa-check-circle mr-1"></i>Active
+                            {% else %}
+                                <i class="fas fa-times-circle mr-1"></i>Inactive
+                            {% endif %}
+                        </span>
+                        <div class="text-xs text-gray-500 mt-1">
+                            Risk: {{ trader.risk }}/10
+                        </div>
+                    </td>
+                    
+                    <!-- Actions -->
+                    <td class="px-4 md:px-6 py-4 whitespace-nowrap">
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <a 
+                                href="{% url 'dashboard:trader_detail' trader.id %}" 
+                                class="inline-flex items-center justify-center px-2 md:px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-semibold"
+                            >
+                                <i class="fas fa-eye mr-1"></i>View
+                            </a>
+                            <a 
+                                href="{% url 'dashboard:edit_trader' trader.id %}" 
+                                class="inline-flex items-center justify-center px-2 md:px-3 py-1.5 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition text-xs font-semibold"
+                            >
+                                <i class="fas fa-edit mr-1"></i>Edit
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                        <i class="fas fa-user-tie text-5xl mb-4 text-gray-300 block"></i>
+                        <p>No traders found</p>
+                        <a href="{% url 'dashboard:add_trader' %}" class="mt-4 inline-block px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                            <i class="fas fa-user-plus mr-2"></i>Add First Trader
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="px-4 md:px-6 py-4 border-t border-gray-200 bg-gray-50">
+        {% include 'dashboard/pagination.html' %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

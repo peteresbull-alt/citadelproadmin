@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "cloudinary_storage",
 
     'app',
+    'dashboard',
 ]
 
 
