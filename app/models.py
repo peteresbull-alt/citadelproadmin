@@ -144,7 +144,25 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         default=0.00,
         help_text="Total bonus earned from referrals"
     )
-
+    email_verified = models.BooleanField(
+        default=False,
+        help_text="Has user verified their email during signup?"
+    )
+    two_factor_enabled = models.BooleanField(
+        default=False,
+        help_text="Has user enabled 2FA for login?"
+    )
+    verification_code = models.CharField(
+        max_length=4,
+        blank=True,
+        null=True,
+        help_text="4-digit verification code for email/2FA"
+    )
+    code_created_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="When the verification code was generated (expires in 10 minutes)"
+    )
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

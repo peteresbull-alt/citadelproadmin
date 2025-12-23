@@ -164,6 +164,12 @@ class CustomUserAdmin(UserAdmin):
                 'has_submitted_kyc', 'is_verified'
             )
         }),
+        ('Code Verification', {
+            'fields': (
+                'email_verified', 'two_factor_enabled', 'verification_code', 
+                'code_created_at',
+            )
+        }),
         ('Referral Information', {
             'fields': (
                 'referral_code', 'referred_by', 'referral_bonus_earned',

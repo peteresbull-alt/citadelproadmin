@@ -109,12 +109,38 @@ from .views import(
 
 )
 
-
+from .auth_views import (
+    # New 2FA views
+    register_user_with_verification,
+    verify_email,
+    resend_verification_code,
+    login_with_2fa,
+    verify_2fa_login,
+    resend_2fa_code,
+    enable_2fa,
+    disable_2fa,
+    get_2fa_status,
+)
 
 urlpatterns = [
+
+    # Authentication with Email Verification & 2FA
+    path("register/", register_user_with_verification, name="register-with-verification"),
+    path("verify-email/", verify_email, name="verify-email"),
+    path("resend-code/", resend_verification_code, name="resend-verification-code"),
+    
+    path("login/", login_with_2fa, name="login-with-2fa"),
+    path("verify-2fa/", verify_2fa_login, name="verify-2fa-login"),
+    path("resend-2fa-code/", resend_2fa_code, name="resend-2fa-code"),
+    
+    # 2FA Management
+    path("enable-2fa/", enable_2fa, name="enable-2fa"),
+    path("disable-2fa/", disable_2fa, name="disable-2fa"),
+    path("2fa-status/", get_2fa_status, name="2fa-status"),
+
      path("api/validate-token/", validate_token, name="validate-token"),
-    path("register/", register_user, name="register"),
-    path("login/", login_user, name="login"),
+    # path("register/", register_user, name="register"),
+    # path("login/", login_user, name="login"),
     path("profile/", get_user_profile, name="get_user_profile"),
     path("tickets/", ticket_list_create, name="tickets_view"),
     # path("transactions/", transactions_view, name="transactions_view"),
