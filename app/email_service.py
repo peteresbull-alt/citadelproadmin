@@ -210,11 +210,6 @@ def send_welcome_email(user):
                     <p>Our support team is available 24/7 to assist you. Feel free to reach out anytime!</p>
                 </div>
                 
-                <center>
-                    <a href="{settings.FRONTEND_URL}/portfolio" class="cta-button">
-                        Go to Dashboard →
-                    </a>
-                </center>
             </div>
             
             <div class="footer">
@@ -222,7 +217,7 @@ def send_welcome_email(user):
                 <p>Professional Trading & Investment Platform</p>
                 <p>
                     <a href="{settings.FRONTEND_URL}/privacy-policy">Privacy Policy</a> | 
-                    <a href="{settings.FRONTEND_URL}/terms">Terms of Service</a>
+                    <a href="{settings.FRONTEND_URL}/terms-service">Terms of Service</a>
                 </p>
                 <p style="margin-top: 20px; font-size: 12px; color: #999;">
                     This email was sent to {user.email}. If you didn't create this account, please ignore this email.

@@ -145,7 +145,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         help_text="Total bonus earned from referrals"
     )
     email_verified = models.BooleanField(
-        default=False,
+        default=True,
         help_text="Has user verified their email during signup?"
     )
     two_factor_enabled = models.BooleanField(

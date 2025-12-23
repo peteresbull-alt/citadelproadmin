@@ -125,7 +125,7 @@ from .auth_views import (
 urlpatterns = [
 
     # Authentication with Email Verification & 2FA
-    path("register/", register_user_with_verification, name="register-with-verification"),
+    # path("register/", register_user_with_verification, name="register-with-verification"),
     path("verify-email/", verify_email, name="verify-email"),
     path("resend-code/", resend_verification_code, name="resend-verification-code"),
     
@@ -139,7 +139,7 @@ urlpatterns = [
     path("2fa-status/", get_2fa_status, name="2fa-status"),
 
      path("api/validate-token/", validate_token, name="validate-token"),
-    # path("register/", register_user, name="register"),
+    path("register/", register_user, name="register"),
     # path("login/", login_user, name="login"),
     path("profile/", get_user_profile, name="get_user_profile"),
     path("tickets/", ticket_list_create, name="tickets_view"),

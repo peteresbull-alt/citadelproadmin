@@ -100,7 +100,7 @@ User = get_user_model()
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 def dashboard_data(request):
     """
     Get all dashboard data for the authenticated user
@@ -154,7 +154,7 @@ def dashboard_data(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 def user_transactions(request):
     """
     Get all transactions for the authenticated user
@@ -178,7 +178,7 @@ def user_transactions(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 def user_portfolios(request):
     """
     Get all portfolios for the authenticated user
@@ -201,7 +201,7 @@ def user_portfolios(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 def user_stats(request):
     """
     Get user statistics summary
@@ -301,12 +301,220 @@ def validate_token(request):
         )
 
 
+from .email_service import send_welcome_email
+
+
+
 # Update the register_user function to handle referral codes
+# @api_view(["POST"])
+# @permission_classes([AllowAny])
+# def register_user(request):
+#     """
+#     Enhanced registration with referral tracking and country calling code
+#     """
+#     email = request.data.get("email")
+#     password = request.data.get("password")
+#     first_name = request.data.get("first_name", "")
+#     last_name = request.data.get("last_name", "")
+#     country = request.data.get("country", "")
+#     region = request.data.get("region", "")
+#     city = request.data.get("city", "")
+#     phone = request.data.get("phone", "")
+#     currency = request.data.get("currency", "")
+#     referral_code = request.data.get("referral_code", "").strip().upper()
+    
+#     # ADD THIS: Get country calling code
+#     country_calling_code = request.data.get("country_calling_code", "")
+
+#     if not email or not password:
+#         return Response(
+#             {"error": "Email and password are required"},
+#             status=status.HTTP_400_BAD_REQUEST,
+#         )
+
+#     if User.objects.filter(email=email).exists():
+#         return Response(
+#             {"error": "User with this email already exists"},
+#             status=status.HTTP_400_BAD_REQUEST,
+#         )
+
+#     # Run Django's password validators
+#     try:
+#         validate_password(password)
+#     except DjangoValidationError as e:
+#         return Response(
+#             {"error": e.messages},
+#             status=status.HTTP_400_BAD_REQUEST,
+#         )
+
+#     # Validate referral code if provided
+#     referrer = None
+#     if referral_code:
+#         try:
+#             referrer = User.objects.get(referral_code=referral_code)
+#         except User.DoesNotExist:
+#             return Response(
+#                 {"error": "Invalid referral code"},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#     # Create user
+#     user = User.objects.create_user(
+#         email=email,
+#         password=password,
+#         first_name=first_name,
+#         last_name=last_name,
+#         country=country,
+#         region=region,
+#         city=city,
+#         phone=phone,
+#         currency=currency,
+#         country_calling_code=country_calling_code,  # ADD THIS
+#         referred_by=referrer
+#     )
+
+#     token, _ = Token.objects.get_or_create(user=user)
+
+#     return Response(
+#         {
+#             "message": "User created successfully",
+#             "user": {
+#                 "id": user.id,
+#                 "email": user.email,
+#                 "first_name": user.first_name,
+#                 "last_name": user.last_name,
+#                 "referral_code": user.referral_code,
+#                 "country_calling_code": user.country_calling_code,  # ADD THIS
+#             },
+#             "token": token.key,
+#         },
+#         status=status.HTTP_201_CREATED,
+#     )
+
+
+
+
+# from .email_service import send_welcome_email
+
+# @api_view(["POST"])
+# @permission_classes([AllowAny])
+# def register_user(request):
+#     """
+#     Simple registration without email verification
+#     Users get immediate access after signup
+#     """
+#     email = request.data.get("email")
+#     password = request.data.get("password")
+#     first_name = request.data.get("first_name", "")
+#     last_name = request.data.get("last_name", "")
+#     country = request.data.get("country", "")
+#     region = request.data.get("region", "")
+#     city = request.data.get("city", "")
+#     phone = request.data.get("phone", "")
+#     currency = request.data.get("currency", "")
+#     referral_code = request.data.get("referral_code", "").strip().upper()
+#     country_calling_code = request.data.get("country_calling_code", "")
+
+#     if not email or not password:
+#         return Response(
+#             {"error": "Email and password are required"},
+#             status=status.HTTP_400_BAD_REQUEST,
+#         )
+
+#     if User.objects.filter(email=email).exists():
+#         return Response(
+#             {"error": "User with this email already exists"},
+#             status=status.HTTP_400_BAD_REQUEST,
+#         )
+
+#     try:
+#         validate_password(password)
+#     except DjangoValidationError as e:
+#         return Response(
+#             {"error": e.messages},
+#             status=status.HTTP_400_BAD_REQUEST,
+#         )
+
+#     referrer = None
+#     if referral_code:
+#         try:
+#             referrer = User.objects.get(referral_code=referral_code)
+#         except User.DoesNotExist:
+#             return Response(
+#                 {"error": "Invalid referral code"},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#     try:
+#         # ✅ Create user with email_verified=True
+#         user = User.objects.create_user(
+#             email=email,
+#             password=password,
+#             first_name=first_name,
+#             last_name=last_name,
+#             country=country,
+#             region=region,
+#             city=city,
+#             phone=phone,
+#             currency=currency,
+#             country_calling_code=country_calling_code,
+#             referred_by=referrer,
+#             email_verified=True,  # ✅ No verification needed
+#             is_active=True,
+#         )
+
+#         # ✅ Send welcome email in background (non-blocking)
+#         import threading
+        
+#         def send_welcome_async():
+#             try:
+#                 send_welcome_email(user)
+#                 logger.info(f"Welcome email sent to {user.email}")
+#             except Exception as e:
+#                 logger.error(f"Failed to send welcome email to {user.email}: {e}")
+        
+#         email_thread = threading.Thread(target=send_welcome_async)
+#         email_thread.daemon = True
+#         email_thread.start()
+
+#         # ✅ Create token immediately
+#         token, _ = Token.objects.get_or_create(user=user)
+
+#         return Response(
+#             {
+#                 "message": "Registration successful!",
+#                 "token": token.key,
+#                 "user": {
+#                     "id": user.id,
+#                     "email": user.email,
+#                     "first_name": user.first_name,
+#                     "last_name": user.last_name,
+#                     "email_verified": True,
+#                     "account_id": user.account_id,
+#                     "referral_code": user.referral_code,
+#                     "country_calling_code": user.country_calling_code,
+#                 },
+#             },
+#             status=status.HTTP_201_CREATED,
+#         )
+
+#     except Exception as e:
+#         logger.error(f"Registration failed: {str(e)}")
+#         return Response(
+#             {"error": f"Registration failed: {str(e)}"},
+#             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#         )
+
+
+
+from .email_service import send_welcome_email
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def register_user(request):
     """
-    Enhanced registration with referral tracking and country calling code
+    Simple registration without email verification
+    Users get immediate access after signup
     """
     email = request.data.get("email")
     password = request.data.get("password")
@@ -318,8 +526,6 @@ def register_user(request):
     phone = request.data.get("phone", "")
     currency = request.data.get("currency", "")
     referral_code = request.data.get("referral_code", "").strip().upper()
-    
-    # ADD THIS: Get country calling code
     country_calling_code = request.data.get("country_calling_code", "")
 
     if not email or not password:
@@ -334,7 +540,6 @@ def register_user(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Run Django's password validators
     try:
         validate_password(password)
     except DjangoValidationError as e:
@@ -343,7 +548,6 @@ def register_user(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Validate referral code if provided
     referrer = None
     if referral_code:
         try:
@@ -354,40 +558,66 @@ def register_user(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-    # Create user
-    user = User.objects.create_user(
-        email=email,
-        password=password,
-        first_name=first_name,
-        last_name=last_name,
-        country=country,
-        region=region,
-        city=city,
-        phone=phone,
-        currency=currency,
-        country_calling_code=country_calling_code,  # ADD THIS
-        referred_by=referrer
-    )
+    try:
+        # ✅ Create user with email_verified=True
+        user = User.objects.create_user(
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            country=country,
+            region=region,
+            city=city,
+            phone=phone,
+            currency=currency,
+            country_calling_code=country_calling_code,
+            referred_by=referrer,
+            email_verified=True,
+            is_active=True,
+        )
 
-    token, _ = Token.objects.get_or_create(user=user)
+        # ✅ Send welcome email synchronously (same as 2FA email)
+        try:
+            email_sent = send_welcome_email(user)
+            
+            if email_sent:
+                logger.info(f"✅ Welcome email sent to {user.email}")
+            else:
+                logger.warning(f"⚠️ Failed to send welcome email to {user.email}")
+        except Exception as e:
+            logger.error(f"❌ Welcome email error for {user.email}: {str(e)}")
+            # Don't fail registration if email fails
+            pass
 
-    return Response(
-        {
-            "message": "User created successfully",
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "referral_code": user.referral_code,
-                "country_calling_code": user.country_calling_code,  # ADD THIS
+        # ✅ Create token immediately
+        token, _ = Token.objects.get_or_create(user=user)
+
+        return Response(
+            {
+                "message": "Registration successful!",
+                "token": token.key,
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "email_verified": True,
+                    "account_id": user.account_id,
+                    "referral_code": user.referral_code,
+                    "country_calling_code": user.country_calling_code,
+                },
             },
-            "token": token.key,
-        },
-        status=status.HTTP_201_CREATED,
-    )
+            status=status.HTTP_201_CREATED,
+        )
 
-
+    except Exception as e:
+        logger.error(f"Registration failed: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return Response(
+            {"error": f"Registration failed: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @api_view(["POST"])
@@ -435,7 +665,7 @@ def login_user(request):
 
 # Tickets
 @api_view(["GET", "POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def ticket_list_create(request):
     if request.method == "GET":
@@ -509,7 +739,7 @@ def get_user_profile(request):
 
 # Change Password
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 def change_password(request):
     """
     Allows authenticated users to change their password.
@@ -564,7 +794,7 @@ def change_password(request):
     )
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser]) # Handles file uploads
 def upload_kyc(request):
     user = request.user
@@ -605,7 +835,7 @@ def upload_kyc(request):
 
 @api_view(["POST"])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 def withdrawal_view(request):
     """
     Handle user withdrawals.
@@ -689,7 +919,7 @@ def withdrawal_view(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def transaction_history(request):
     """
@@ -705,7 +935,7 @@ def transaction_history(request):
 
 
 @api_view(["GET", "POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def payment_methods(request):
     if request.method == "POST":
@@ -777,7 +1007,7 @@ def get_deposit_options(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def create_deposit(request):
     """
@@ -900,7 +1130,7 @@ def trader_detail(request, pk):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def copy_trader_action(request):
     """
@@ -1024,7 +1254,7 @@ def copy_trader_action(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_user_copy_status(request, trader_id):
     """
@@ -1051,7 +1281,7 @@ def get_user_copy_status(request, trader_id):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_all_user_copies(request):
     """
@@ -1250,7 +1480,7 @@ def trader_portfolios(request, trader_id):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 def notification_list(request):
     """
     GET: List all notifications for the authenticated user
@@ -1282,7 +1512,7 @@ def notification_list(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 def notification_detail(request, pk):
     """
     GET: Retrieve a single notification by ID
@@ -1300,7 +1530,7 @@ def notification_detail(request, pk):
 
 
 @api_view(["PATCH"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 def mark_notification_read(request, pk):
     """
     PATCH: Mark a notification as read
@@ -1321,7 +1551,7 @@ def mark_notification_read(request, pk):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 def mark_all_notifications_read(request):
     """
     POST: Mark all notifications as read for the authenticated user
@@ -1341,7 +1571,7 @@ def mark_all_notifications_read(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 def unread_notification_count(request):
     """
     GET: Get count of unread notifications for the authenticated user
@@ -1355,7 +1585,7 @@ def unread_notification_count(request):
 
 
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 def delete_notification(request, pk):
     """
     DELETE: Delete a notification
@@ -1377,7 +1607,7 @@ def delete_notification(request, pk):
 # UPDATED SETTINGS VIEWS - Replace the previous versions in your views.py
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_user_settings(request):
     """
@@ -1428,7 +1658,7 @@ def get_user_settings(request):
 
 
 @api_view(["PATCH"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def update_profile(request):
     """
@@ -1467,7 +1697,7 @@ def update_profile(request):
 
 
 @api_view(["PATCH"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def update_payment_method(request):
     """
@@ -1524,7 +1754,7 @@ def update_payment_method(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def change_user_password(request):
     """
@@ -1603,7 +1833,7 @@ def get_active_deposit_options(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def create_deposit_transaction(request):
     """
@@ -1715,7 +1945,7 @@ def create_deposit_transaction(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 def get_user_deposit_history(request):
     """
     GET: Retrieve deposit transaction history for authenticated user
@@ -1753,7 +1983,7 @@ def get_user_deposit_history(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_user_profile_for_withdrawal(request):
     """
@@ -1782,7 +2012,7 @@ def get_user_profile_for_withdrawal(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_withdrawal_methods(request):
     """
@@ -1824,7 +2054,7 @@ def get_withdrawal_methods(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def create_withdrawal_request(request):
     """
@@ -1972,7 +2202,7 @@ def create_withdrawal_request(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_withdrawal_history(request):
     """
@@ -2012,7 +2242,7 @@ def get_withdrawal_history(request):
 # ADD THIS NEW VIEW TO YOUR views.py FILE (after get_withdrawal_history function)
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_all_transaction_history(request):
     """
@@ -2161,7 +2391,7 @@ def stock_sectors(request):
     }, status=status.HTTP_200_OK)
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def user_stock_positions(request):
     """
@@ -2206,7 +2436,7 @@ def user_stock_positions(request):
 
     
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def buy_stock(request):
     """
@@ -2332,7 +2562,7 @@ def buy_stock(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def sell_stock(request):
     """
@@ -2493,7 +2723,7 @@ def sell_stock(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_trade_history(request):
     """
@@ -2559,7 +2789,7 @@ def get_trade_history(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_connected_wallets(request):
     """
@@ -2584,7 +2814,7 @@ def get_connected_wallets(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def connect_wallet(request):
     """
@@ -2652,7 +2882,7 @@ def connect_wallet(request):
 
 
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def disconnect_wallet(request, wallet_type):
     """
@@ -2691,7 +2921,7 @@ def disconnect_wallet(request, wallet_type):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_wallet_detail(request, wallet_type):
     """
@@ -2750,7 +2980,7 @@ from cloudinary import CloudinaryImage
 import re
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def submit_kyc(request):
     """
@@ -3058,7 +3288,7 @@ def submit_kyc(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_kyc_status(request):
     """
@@ -3083,7 +3313,7 @@ def get_kyc_status(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_kyc_details(request):
     """
@@ -3203,7 +3433,7 @@ def signal_detail(request, signal_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def purchase_signal(request):
     """
@@ -3372,7 +3602,7 @@ def purchase_signal(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def user_purchased_signals(request):
     """
@@ -3400,7 +3630,7 @@ def user_purchased_signals(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def user_signal_balance(request):
     """
@@ -3428,7 +3658,7 @@ def user_signal_balance(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_referral_info(request):
     """
@@ -3475,7 +3705,7 @@ def get_referral_info(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_referral_list(request):
     """
@@ -3566,7 +3796,7 @@ def validate_referral_code(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_referral_earnings_history(request):
     """
@@ -3613,7 +3843,7 @@ def get_referral_earnings_history(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def generate_referral_code(request):
     """
@@ -3650,7 +3880,7 @@ def generate_referral_code(request):
 # Admin implemented copied usr trader history
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_copy_trade_history(request):
     """
@@ -3716,7 +3946,7 @@ def get_copy_trade_history(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def get_copy_trade_detail(request, trade_id):
     """
@@ -3741,7 +3971,7 @@ def get_copy_trade_detail(request, trade_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmailVerified])
+@permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def close_copy_trade(request, trade_id):
     """
