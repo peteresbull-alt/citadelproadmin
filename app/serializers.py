@@ -196,20 +196,51 @@ class TraderPortfolioSerializer(serializers.ModelSerializer):
         ]
 
 
+# class TraderListSerializer(serializers.ModelSerializer):
+#     """Serializer for list view - lighter fields"""
+#     avatar_url = serializers.SerializerMethodField()
+    
+#     class Meta:
+#         model = Trader
+#         fields = [
+#             'id', 'name', 'username', 'avatar_url', 'badge',
+#             'country', 'gain', 'risk', 'trades', 'capital',
+#             'copiers', 'is_active'
+#         ]
+    
+#     def get_avatar_url(self, obj):
+#         return obj.avatar.url if obj.avatar else None
+
+
 class TraderListSerializer(serializers.ModelSerializer):
-    """Serializer for list view - lighter fields"""
-    avatar_url = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
+    country_flag = serializers.SerializerMethodField()
     
     class Meta:
         model = Trader
         fields = [
-            'id', 'name', 'username', 'avatar_url', 'badge',
-            'country', 'gain', 'risk', 'trades', 'capital',
-            'copiers', 'is_active'
+            'id', 'name', 'username', 'avatar', 'country_flag',
+            'badge', 'country', 'gain', 'risk', 'trades', 
+            'capital', 'copiers', 'is_active'
         ]
     
-    def get_avatar_url(self, obj):
-        return obj.avatar.url if obj.avatar else None
+    def get_avatar(self, obj):
+        """Return full Cloudinary URL for avatar"""
+        if obj.avatar:
+            try:
+                return obj.avatar.url
+            except:
+                return None
+        return None
+    
+    def get_country_flag(self, obj):
+        """Return full Cloudinary URL for country flag"""
+        if obj.country_flag:
+            try:
+                return obj.country_flag.url
+            except:
+                return None
+        return None
 
 
 class TraderDetailSerializer(serializers.ModelSerializer):

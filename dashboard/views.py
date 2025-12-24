@@ -15,7 +15,7 @@ from app.models import (
 from .forms import (
     AddTradeForm, AddEarningsForm, ApproveDepositForm,
     ApproveWithdrawalForm, ApproveKYCForm, AddCopyTradeForm,
-    AddTraderForm, EditTraderForm
+    AddTraderForm, EditTraderForm, EditDepositForm,
 )
 from .decorators import admin_required
 
@@ -385,6 +385,94 @@ def deposit_detail(request, transaction_id):
     }
     
     return render(request, 'dashboard/deposit_detail.html', context)
+
+
+
+@admin_required
+def edit_deposit(request, transaction_id):
+    """Edit deposit details"""
+    deposit = get_object_or_404(
+        Transaction,
+        id=transaction_id,
+        transaction_type='deposit'
+    )
+    
+    if request.method == 'POST':
+        form = EditDepositForm(request.POST, request.FILES)
+        if form.is_valid():
+            old_amount = deposit.amount
+            old_status = deposit.status
+            
+            # Update deposit fields
+            deposit.amount = form.cleaned_data['amount']
+            deposit.currency = form.cleaned_data['currency']
+            deposit.unit = form.cleaned_data['unit']
+            deposit.status = form.cleaned_data['status']
+            deposit.description = form.cleaned_data['description']
+            deposit.reference = form.cleaned_data['reference']
+            
+            # Update receipt if new one uploaded
+            if form.cleaned_data.get('receipt'):
+                deposit.receipt = form.cleaned_data['receipt']
+            
+            deposit.save()
+            
+            # Handle balance adjustments if status changed
+            if old_status != deposit.status:
+                if old_status == 'completed' and deposit.status != 'completed':
+                    # Was completed, now not completed - deduct from balance
+                    deposit.user.balance -= old_amount
+                    deposit.user.save()
+                    messages.warning(request, f'${old_amount} deducted from {deposit.user.email} balance due to status change')
+                
+                elif old_status != 'completed' and deposit.status == 'completed':
+                    # Wasn't completed, now completed - add to balance
+                    deposit.user.balance += deposit.amount
+                    deposit.user.save()
+                    messages.success(request, f'${deposit.amount} credited to {deposit.user.email} balance')
+            
+            # Handle amount changes for completed deposits
+            elif deposit.status == 'completed' and old_amount != deposit.amount:
+                # Adjust balance by difference
+                difference = deposit.amount - old_amount
+                deposit.user.balance += difference
+                deposit.user.save()
+                
+                if difference > 0:
+                    messages.success(request, f'Additional ${difference} credited to {deposit.user.email} balance')
+                else:
+                    messages.warning(request, f'${abs(difference)} deducted from {deposit.user.email} balance')
+            
+            # Create notification
+            Notification.objects.create(
+                user=deposit.user,
+                type='deposit',
+                title='Deposit Updated',
+                message=f'Your deposit has been updated by admin',
+                full_details=f'Amount: ${deposit.amount}\nCurrency: {deposit.currency}\nStatus: {deposit.status}\nReference: {deposit.reference}'
+            )
+            
+            messages.success(request, 'Deposit updated successfully!')
+            return redirect('dashboard:deposit_detail', transaction_id=deposit.id)
+    else:
+        # Pre-fill form with existing data
+        initial_data = {
+            'amount': deposit.amount,
+            'currency': deposit.currency,
+            'unit': deposit.unit,
+            'status': deposit.status,
+            'description': deposit.description or '',
+            'reference': deposit.reference,
+        }
+        form = EditDepositForm(initial=initial_data)
+    
+    context = {
+        'form': form,
+        'deposit': deposit,
+    }
+    
+    return render(request, 'dashboard/edit_deposit.html', context)
+
 
 
 @admin_required
@@ -1326,3 +1414,139 @@ def edit_trader(request, trader_id):
     }
     
     return render(request, 'dashboard/edit_trader.html', context)
+
+
+
+@admin_required
+def investors_list(request):
+    """
+    List all users who have ever made a deposit
+    Shows unique users with their total deposits and amounts
+    """
+    search_query = request.GET.get('search', '')
+    
+    # Get all users who have made at least one deposit
+    investor_ids = Transaction.objects.filter(
+        transaction_type='deposit'
+    ).values_list('user_id', flat=True).distinct()
+    
+    investors = CustomUser.objects.filter(
+        id__in=investor_ids
+    ).order_by('-date_joined')
+    
+    # Search functionality
+    if search_query:
+        investors = investors.filter(
+            Q(email__icontains=search_query) |
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query) |
+            Q(account_id__icontains=search_query)
+        )
+    
+    # Annotate with deposit statistics
+    investors_data = []
+    for investor in investors:
+        deposits = Transaction.objects.filter(
+            user=investor,
+            transaction_type='deposit'
+        )
+        
+        total_deposits = deposits.count()
+        completed_deposits = deposits.filter(status='completed').count()
+        pending_deposits = deposits.filter(status='pending').count()
+        
+        total_amount = deposits.filter(status='completed').aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+        
+        investors_data.append({
+            'user': investor,
+            'total_deposits': total_deposits,
+            'completed_deposits': completed_deposits,
+            'pending_deposits': pending_deposits,
+            'total_amount': total_amount,
+        })
+    
+    # Pagination - 20 investors per page
+    paginator = Paginator(investors_data, 20)
+    page = request.GET.get('page')
+    
+    try:
+        investors_page = paginator.page(page)
+    except PageNotAnInteger:
+        investors_page = paginator.page(1)
+    except EmptyPage:
+        investors_page = paginator.page(paginator.num_pages)
+    
+    context = {
+        'investors': investors_page,
+        'page_obj': investors_page,
+        'is_paginated': paginator.num_pages > 1,
+        'paginator': paginator,
+        'search_query': search_query,
+        'total_investors': len(investors_data),
+    }
+    
+    return render(request, 'dashboard/investors_list.html', context)
+
+
+@admin_required
+def investor_detail(request, user_id):
+    """
+    Show detailed view of a specific investor
+    Lists all their deposit transactions
+    """
+    investor = get_object_or_404(CustomUser, id=user_id)
+    
+    # Get all deposits for this user
+    deposits = Transaction.objects.filter(
+        user=investor,
+        transaction_type='deposit'
+    ).order_by('-created_at')
+    
+    # Calculate statistics
+    total_deposits = deposits.count()
+    completed_deposits = deposits.filter(status='completed')
+    pending_deposits = deposits.filter(status='pending')
+    failed_deposits = deposits.filter(status='failed')
+    
+    total_completed_amount = completed_deposits.aggregate(
+        total=Sum('amount')
+    )['total'] or Decimal('0.00')
+    
+    total_pending_amount = pending_deposits.aggregate(
+        total=Sum('amount')
+    )['total'] or Decimal('0.00')
+    
+    # Pagination - 15 deposits per page
+    paginator = Paginator(deposits, 15)
+    page = request.GET.get('page')
+    
+    try:
+        deposits_page = paginator.page(page)
+    except PageNotAnInteger:
+        deposits_page = paginator.page(1)
+    except EmptyPage:
+        deposits_page = paginator.page(paginator.num_pages)
+    
+    context = {
+        'investor': investor,
+        'deposits': deposits_page,
+        'page_obj': deposits_page,
+        'is_paginated': paginator.num_pages > 1,
+        'paginator': paginator,
+        'total_deposits': total_deposits,
+        'completed_count': completed_deposits.count(),
+        'pending_count': pending_deposits.count(),
+        'failed_count': failed_deposits.count(),
+        'total_completed_amount': total_completed_amount,
+        'total_pending_amount': total_pending_amount,
+    }
+    
+    return render(request, 'dashboard/investor_detail.html', context)
+
+
+
+
+
+

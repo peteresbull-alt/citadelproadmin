@@ -23,6 +23,7 @@ urlpatterns = [
     # Deposit management
     path('deposits/', views.deposits, name='deposits'),
     path('deposits/<int:transaction_id>/', views.deposit_detail, name='deposit_detail'),
+    path('deposits/<int:transaction_id>/edit/', views.edit_deposit, name='edit_deposit'),  # ✅ NEW
     
     # Withdrawal management
     path('withdrawals/', views.withdrawals, name='withdrawals'),
@@ -48,4 +49,10 @@ urlpatterns = [
     
     # API endpoints
     path('api/assets-by-type/', views.get_assets_by_type, name='get_assets_by_type'),
+
+
+    # ✅ NEW: Investors Management
+    path('investors/', views.investors_list, name='investors_list'),
+    path('investors/<int:user_id>/', views.investor_detail, name='investor_detail'),
+
 ]

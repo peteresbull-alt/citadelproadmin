@@ -171,8 +171,8 @@ urlpatterns = [
 
      path("deposits/", create_deposit, name="create-deposit"),
 
-     path("traders/", trader_list_create, name="trader-list-create"),
-    path("traders/<int:pk>/", trader_detail, name="trader-detail"),
+    #  path("traders/", trader_list_create, name="trader-list-create"),
+    # path("traders/<int:pk>/", trader_detail, name="trader-detail"),
 
 
     path("copy-trader/action/", copy_trader_action, name="copy-trader-action"),

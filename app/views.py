@@ -1395,16 +1395,60 @@ def news_detail(request, pk):
 
 # REPLACE your existing trader views in app/views.py with these:
 
+# @api_view(["GET"])
+# @permission_classes([AllowAny])
+# def trader_list(request):
+#     """
+#     GET: List all traders with optional filtering
+#     Query params:
+#     - search: Search in name and username
+#     - badge: Filter by badge (gold, silver, bronze)
+#     - min_gain: Filter by minimum gain percentage
+#     - max_risk: Filter by maximum risk level
+#     """
+#     traders = Trader.objects.filter(is_active=True)
+
+#     # Search functionality
+#     search = request.GET.get("search")
+#     if search:
+#         from django.db.models import Q
+#         traders = traders.filter(
+#             Q(name__icontains=search) | 
+#             Q(username__icontains=search)
+#         )
+
+#     # Filter by badge
+#     badge = request.GET.get("badge")
+#     if badge:
+#         traders = traders.filter(badge=badge)
+    
+#     # Filter by minimum gain
+#     min_gain = request.GET.get("min_gain")
+#     if min_gain:
+#         try:
+#             traders = traders.filter(gain__gte=float(min_gain))
+#         except ValueError:
+#             pass
+    
+#     # Filter by maximum risk
+#     max_risk = request.GET.get("max_risk")
+#     if max_risk:
+#         try:
+#             traders = traders.filter(risk__lte=int(max_risk))
+#         except ValueError:
+#             pass
+
+#     serializer = TraderListSerializer(traders, many=True)
+#     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def trader_list(request):
     """
     GET: List all traders with optional filtering
-    Query params:
-    - search: Search in name and username
-    - badge: Filter by badge (gold, silver, bronze)
-    - min_gain: Filter by minimum gain percentage
-    - max_risk: Filter by maximum risk level
     """
     traders = Trader.objects.filter(is_active=True)
 
@@ -1417,29 +1461,20 @@ def trader_list(request):
             Q(username__icontains=search)
         )
 
-    # Filter by badge
-    badge = request.GET.get("badge")
-    if badge:
-        traders = traders.filter(badge=badge)
-    
-    # Filter by minimum gain
-    min_gain = request.GET.get("min_gain")
-    if min_gain:
-        try:
-            traders = traders.filter(gain__gte=float(min_gain))
-        except ValueError:
-            pass
-    
-    # Filter by maximum risk
-    max_risk = request.GET.get("max_risk")
-    if max_risk:
-        try:
-            traders = traders.filter(risk__lte=int(max_risk))
-        except ValueError:
-            pass
-
     serializer = TraderListSerializer(traders, many=True)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    # ✅ Ensure images have full URLs
+    data = serializer.data
+    for trader in data:
+        # Make sure avatar URL is complete
+        if trader.get('avatar') and not trader['avatar'].startswith('http'):
+            trader['avatar'] = None
+        # Make sure country_flag URL is complete  
+        if trader.get('country_flag') and not trader['country_flag'].startswith('http'):
+            trader['country_flag'] = None
+    
+    return Response(data, status=status.HTTP_200_OK)
+
 
 
 @api_view(["GET"])

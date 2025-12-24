@@ -962,3 +962,100 @@ class AddTraderForm(forms.Form):
 class EditTraderForm(AddTraderForm):
     """Form for editing existing traders - inherits all fields from AddTraderForm"""
     pass
+
+
+class EditDepositForm(forms.Form):
+    """Form for editing deposit details"""
+    
+    # Amount
+    amount = forms.DecimalField(
+        label="Deposit Amount",
+        max_digits=12,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500',
+            'placeholder': '1000.00',
+            'step': '0.01'
+        })
+    )
+    
+    # Currency
+    CURRENCY_CHOICES = [
+        ('BTC', 'Bitcoin (BTC)'),
+        ('ETH', 'Ethereum (ETH)'),
+        ('SOL', 'Solana (SOL)'),
+        ('USDT ERC20', 'USDT (ERC20)'),
+        ('USDT TRC20', 'USDT (TRC20)'),
+        ('BNB', 'Binance Coin (BNB)'),
+        ('TRX', 'Tron (TRX)'),
+        ('USDC', 'USDC (BASE)'),
+    ]
+    
+    currency = forms.ChoiceField(
+        choices=CURRENCY_CHOICES,
+        label="Currency",
+        widget=forms.Select(attrs={
+            'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500',
+        })
+    )
+    
+    # Unit (crypto amount)
+    unit = forms.DecimalField(
+        label="Crypto Unit Amount",
+        max_digits=12,
+        decimal_places=8,
+        widget=forms.NumberInput(attrs={
+            'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500',
+            'placeholder': '0.01234567',
+            'step': '0.00000001'
+        }),
+        help_text="Amount of cryptocurrency deposited"
+    )
+    
+    # Status
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    status = forms.ChoiceField(
+        choices=STATUS_CHOICES,
+        label="Status",
+        widget=forms.Select(attrs={
+            'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500',
+        })
+    )
+    
+    # Description
+    description = forms.CharField(
+        label="Description",
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500',
+            'rows': 3,
+            'placeholder': 'Deposit description...'
+        })
+    )
+    
+    # Reference
+    reference = forms.CharField(
+        label="Reference Number",
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500',
+            'placeholder': 'DEP-XXXXXXXXXX'
+        })
+    )
+    
+    # Receipt (optional - for updating)
+    receipt = forms.ImageField(
+        label="Update Receipt (Optional)",
+        required=False,
+        widget=forms.FileInput(attrs={
+            'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500',
+            'accept': 'image/*'
+        }),
+        help_text="Leave blank to keep existing receipt"
+    )

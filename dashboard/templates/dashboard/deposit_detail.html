@@ -188,25 +188,31 @@
             </div>
         </div>
         
-        <!-- Quick Actions -->
-        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 sm:p-5 md:p-6">
-            <h3 class="text-sm sm:text-base md:text-lg font-bold text-blue-900 mb-3 sm:mb-4">
-                <i class="fas fa-bolt mr-2"></i>
-                Quick Actions
-            </h3>
-            
-            <div class="space-y-2">
-                <a href="{% url 'dashboard:deposits' %}" class="block w-full text-center px-3 sm:px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold text-xs sm:text-sm">
-                    <i class="fas fa-list mr-1 sm:mr-2"></i>
-                    Back to All Deposits
-                </a>
-                
-                <a href="{% url 'dashboard:transactions' %}" class="block w-full text-center px-3 sm:px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold text-xs sm:text-sm">
-                    <i class="fas fa-exchange-alt mr-1 sm:mr-2"></i>
-                    View All Transactions
-                </a>
-            </div>
-        </div>
+        <!-- Add this button in the Quick Actions section -->
+<div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 sm:p-5 md:p-6">
+    <h3 class="text-sm sm:text-base md:text-lg font-bold text-blue-900 mb-3 sm:mb-4">
+        <i class="fas fa-bolt mr-2"></i>
+        Quick Actions
+    </h3>
+    
+    <div class="space-y-2">
+        <!-- ✅ NEW EDIT BUTTON -->
+        <a href="{% url 'dashboard:edit_deposit' deposit.id %}" class="block w-full text-center px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold text-xs sm:text-sm">
+            <i class="fas fa-edit mr-1 sm:mr-2"></i>
+            Edit Deposit Details
+        </a>
+        
+        <a href="{% url 'dashboard:deposits' %}" class="block w-full text-center px-3 sm:px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold text-xs sm:text-sm">
+            <i class="fas fa-list mr-1 sm:mr-2"></i>
+            Back to All Deposits
+        </a>
+        
+        <a href="{% url 'dashboard:transactions' %}" class="block w-full text-center px-3 sm:px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold text-xs sm:text-sm">
+            <i class="fas fa-exchange-alt mr-1 sm:mr-2"></i>
+            View All Transactions
+        </a>
+    </div>
+</div>
     </div>
 </div>
 {% endblock %}

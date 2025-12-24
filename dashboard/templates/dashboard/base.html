@@ -84,6 +84,11 @@
                 </li>
                 
                 <li><div class="text-xs text-blue-300 uppercase tracking-wider mt-6 mb-2 px-3">Users</div></li>
+                <a href="{% url 'dashboard:investors_list' %}" 
+                class="flex items-center px-4 py-3 text-white hover:bg-blue-50 hover:text-blue-600 rounded-lg transition">
+                    <i class="fas fa-wallet mr-3 text-lg"></i>
+                    <span>Investors</span>
+                </a>
                 <li>
                     <a href="{% url 'dashboard:users' %}" class="flex items-center p-3 text-white rounded-lg hover:bg-blue-700 {% if 'users' in request.path %}bg-blue-700{% endif %}">
                         <i class="fas fa-users w-6"></i>
