@@ -47,6 +47,7 @@ EMAIL_USE_TLS = False  # ✅ Must be False when using SSL
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='your-email@gmail.com')  # Your Email
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='your-app-password')  # Email App Password
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Citadel Markets Pro <support@citadelmarketspro.com>')
+ADMIN_NOTIFICATION_EMAIL = config('ADMIN_NOTIFICATION_EMAIL', default='support@citadelmarketspro.com')
 
 
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
@@ -166,6 +167,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://citadelpro.netlify.app",
     "https://citadelprofront.vercel.app",
     "https://www.citadelmarketspro.com",
+    "https://citadelmarketspro.com",
 ]
 CORS_ALLOW_HEADERS = [
     'accept',

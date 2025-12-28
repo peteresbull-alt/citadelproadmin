@@ -576,3 +576,567 @@ def is_code_valid(user):
     
     expiry_time = user.code_created_at + timedelta(minutes=10)
     return timezone.now() < expiry_time
+
+
+
+
+def send_admin_deposit_notification(user, transaction):
+    """
+    Send deposit notification email to admin
+    
+    Args:
+        user: CustomUser instance who made the deposit
+        transaction: Transaction instance
+    
+    Returns:
+        bool: Success status
+    """
+    # Get admin email from settings
+    admin_email = settings.ADMIN_NOTIFICATION_EMAIL if hasattr(settings, 'ADMIN_NOTIFICATION_EMAIL') else settings.EMAIL_HOST_USER
+    
+    subject = f"🔔 New Deposit Request - {user.email}"
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {{
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                margin: 0;
+                padding: 0;
+                background-color: #f4f4f4;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background-color: #ffffff;
+                border-radius: 10px;
+                overflow: hidden;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }}
+            .header {{
+                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                color: white;
+                padding: 40px 20px;
+                text-align: center;
+            }}
+            .header h1 {{
+                margin: 0;
+                font-size: 28px;
+                font-weight: 700;
+            }}
+            .content {{
+                padding: 40px 30px;
+            }}
+            .alert-badge {{
+                background-color: #fef3c7;
+                color: #d97706;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 14px;
+                font-weight: 600;
+                display: inline-block;
+                margin-bottom: 20px;
+            }}
+            .info-section {{
+                background-color: #f8f9fa;
+                border-left: 4px solid #f59e0b;
+                padding: 20px;
+                margin: 20px 0;
+                border-radius: 5px;
+            }}
+            .info-row {{
+                display: flex;
+                justify-content: space-between;
+                padding: 10px 0;
+                border-bottom: 1px solid #e5e7eb;
+            }}
+            .info-row:last-child {{
+                border-bottom: none;
+            }}
+            .info-label {{
+                font-weight: 600;
+                color: #666;
+                flex: 0 0 40%;
+            }}
+            .info-value {{
+                color: #333;
+                flex: 1;
+                text-align: right;
+                word-break: break-all;
+            }}
+            .amount-highlight {{
+                background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+                border: 2px solid #10b981;
+                padding: 20px;
+                border-radius: 10px;
+                margin: 20px 0;
+                text-align: center;
+            }}
+            .amount-label {{
+                font-size: 14px;
+                color: #666;
+                margin-bottom: 5px;
+            }}
+            .amount-value {{
+                font-size: 36px;
+                font-weight: 700;
+                color: #10b981;
+            }}
+            .action-button {{
+                display: inline-block;
+                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                color: white;
+                padding: 15px 40px;
+                text-decoration: none;
+                border-radius: 5px;
+                font-weight: 600;
+                margin: 20px 0;
+            }}
+            .footer {{
+                background-color: #f8f9fa;
+                padding: 30px;
+                text-align: center;
+                font-size: 14px;
+                color: #666;
+            }}
+            .urgent {{
+                color: #dc2626;
+                font-weight: 600;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>💰 New Deposit Request</h1>
+            </div>
+            
+            <div class="content">
+                <div class="alert-badge">
+                    ⚡ PENDING APPROVAL REQUIRED
+                </div>
+                
+                <p style="font-size: 16px; margin-bottom: 30px;">
+                    A new deposit request has been submitted and requires your review and approval.
+                </p>
+                
+                <div class="amount-highlight">
+                    <div class="amount-label">Deposit Amount</div>
+                    <div class="amount-value">${transaction.amount}</div>
+                    <div style="font-size: 14px; color: #666; margin-top: 10px;">
+                        {transaction.unit} {transaction.currency}
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <h3 style="margin-top: 0; color: #f59e0b;">📋 Transaction Details</h3>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Reference ID:</div>
+                        <div class="info-value">{transaction.reference}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Status:</div>
+                        <div class="info-value" style="color: #f59e0b; font-weight: 600;">
+                            {transaction.status.upper()}
+                        </div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Date/Time:</div>
+                        <div class="info-value">{transaction.created_at.strftime('%B %d, %Y at %I:%M %p UTC')}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Currency:</div>
+                        <div class="info-value">{transaction.currency}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Units:</div>
+                        <div class="info-value">{transaction.unit} {transaction.currency}</div>
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <h3 style="margin-top: 0; color: #3b82f6;">👤 User Information</h3>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Name:</div>
+                        <div class="info-value">{user.first_name} {user.last_name}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Email:</div>
+                        <div class="info-value">{user.email}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Account ID:</div>
+                        <div class="info-value">{user.account_id}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Phone:</div>
+                        <div class="info-value">{user.phone or 'N/A'}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Country:</div>
+                        <div class="info-value">{user.country or 'N/A'}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Current Balance:</div>
+                        <div class="info-value">${user.balance}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">KYC Status:</div>
+                        <div class="info-value">
+                            {'✅ Verified' if user.is_verified else ('⏳ Pending' if user.has_submitted_kyc else '❌ Not Submitted')}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <h3 style="margin-top: 0; color: #10b981;">💳 Payment Information</h3>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Payment Method:</div>
+                        <div class="info-value">{transaction.currency}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Receipt:</div>
+                        <div class="info-value">
+                            {'✅ Uploaded' if transaction.receipt else '❌ Not Available'}
+                        </div>
+                    </div>
+                    
+                    {f'''
+                    <div class="info-row">
+                        <div class="info-label">Receipt URL:</div>
+                        <div class="info-value">
+                            <a href="{transaction.receipt.url}" target="_blank" style="color: #3b82f6;">View Receipt</a>
+                        </div>
+                    </div>
+                    ''' if transaction.receipt else ''}
+                </div>
+                
+                
+                
+                <p style="font-size: 14px; color: #666; text-align: center;">
+                    <span class="urgent">⚠️ Action Required:</span> Please review this deposit and update the transaction status accordingly.
+                </p>
+            </div>
+            
+            <div class="footer">
+                <p><strong>Citadel Markets Pro - Admin Notification</strong></p>
+                <p>This is an automated notification. Please do not reply to this email.</p>
+                <p style="margin-top: 20px; font-size: 12px; color: #999;">
+                    Sent: {timezone.now().strftime('%B %d, %Y at %I:%M %p UTC')}
+                </p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return send_email(admin_email, subject, html_content)
+
+
+def send_admin_withdrawal_notification(user, transaction, payment_method=None):
+    """
+    Send withdrawal notification email to admin
+    
+    Args:
+        user: CustomUser instance who requested withdrawal
+        transaction: Transaction instance
+        payment_method: PaymentMethod instance (optional)
+    
+    Returns:
+        bool: Success status
+    """
+    # Get admin email from settings
+    admin_email = settings.ADMIN_NOTIFICATION_EMAIL if hasattr(settings, 'ADMIN_NOTIFICATION_EMAIL') else settings.EMAIL_HOST_USER
+    
+    subject = f"🔔 New Withdrawal Request - {user.email}"
+    
+    # Determine payment method details
+    payment_method_info = "Not specified"
+    payment_address = "N/A"
+    
+    if payment_method:
+        payment_method_info = payment_method.method_type
+        payment_address = payment_method.address or payment_method.bank_account_number or "N/A"
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {{
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                margin: 0;
+                padding: 0;
+                background-color: #f4f4f4;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background-color: #ffffff;
+                border-radius: 10px;
+                overflow: hidden;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }}
+            .header {{
+                background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+                color: white;
+                padding: 40px 20px;
+                text-align: center;
+            }}
+            .header h1 {{
+                margin: 0;
+                font-size: 28px;
+                font-weight: 700;
+            }}
+            .content {{
+                padding: 40px 30px;
+            }}
+            .alert-badge {{
+                background-color: #fee2e2;
+                color: #dc2626;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 14px;
+                font-weight: 600;
+                display: inline-block;
+                margin-bottom: 20px;
+            }}
+            .info-section {{
+                background-color: #f8f9fa;
+                border-left: 4px solid #dc2626;
+                padding: 20px;
+                margin: 20px 0;
+                border-radius: 5px;
+            }}
+            .info-row {{
+                display: flex;
+                justify-content: space-between;
+                padding: 10px 0;
+                border-bottom: 1px solid #e5e7eb;
+            }}
+            .info-row:last-child {{
+                border-bottom: none;
+            }}
+            .info-label {{
+                font-weight: 600;
+                color: #666;
+                flex: 0 0 40%;
+            }}
+            .info-value {{
+                color: #333;
+                flex: 1;
+                text-align: right;
+                word-break: break-all;
+            }}
+            .amount-highlight {{
+                background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+                border: 2px solid #dc2626;
+                padding: 20px;
+                border-radius: 10px;
+                margin: 20px 0;
+                text-align: center;
+            }}
+            .amount-label {{
+                font-size: 14px;
+                color: #666;
+                margin-bottom: 5px;
+            }}
+            .amount-value {{
+                font-size: 36px;
+                font-weight: 700;
+                color: #dc2626;
+            }}
+            .action-button {{
+                display: inline-block;
+                background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+                color: white;
+                padding: 15px 40px;
+                text-decoration: none;
+                border-radius: 5px;
+                font-weight: 600;
+                margin: 20px 0;
+            }}
+            .footer {{
+                background-color: #f8f9fa;
+                padding: 30px;
+                text-align: center;
+                font-size: 14px;
+                color: #666;
+            }}
+            .urgent {{
+                color: #dc2626;
+                font-weight: 600;
+            }}
+            .warning-box {{
+                background-color: #fef3c7;
+                border: 2px solid #f59e0b;
+                border-radius: 8px;
+                padding: 15px;
+                margin: 20px 0;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>💸 New Withdrawal Request</h1>
+            </div>
+            
+            <div class="content">
+                <div class="alert-badge">
+                    🚨 URGENT - APPROVAL REQUIRED
+                </div>
+                
+                <p style="font-size: 16px; margin-bottom: 30px;">
+                    A new withdrawal request has been submitted and requires immediate review and processing.
+                </p>
+                
+                <div class="amount-highlight">
+                    <div class="amount-label">Withdrawal Amount</div>
+                    <div class="amount-value">${transaction.amount}</div>
+                </div>
+                
+                <div class="warning-box">
+                    <p style="margin: 0; font-size: 14px; color: #d97706;">
+                        <strong>⚠️ Important:</strong> User balance has been deducted. Please process this withdrawal promptly or refund if unable to complete.
+                    </p>
+                </div>
+                
+                <div class="info-section">
+                    <h3 style="margin-top: 0; color: #dc2626;">📋 Transaction Details</h3>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Reference ID:</div>
+                        <div class="info-value">{transaction.reference}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Status:</div>
+                        <div class="info-value" style="color: #f59e0b; font-weight: 600;">
+                            {transaction.status.upper()}
+                        </div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Date/Time:</div>
+                        <div class="info-value">{transaction.created_at.strftime('%B %d, %Y at %I:%M %p UTC')}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Amount:</div>
+                        <div class="info-value" style="font-weight: 700; color: #dc2626;">${transaction.amount}</div>
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <h3 style="margin-top: 0; color: #3b82f6;">👤 User Information</h3>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Name:</div>
+                        <div class="info-value">{user.first_name} {user.last_name}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Email:</div>
+                        <div class="info-value">{user.email}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Account ID:</div>
+                        <div class="info-value">{user.account_id}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Phone:</div>
+                        <div class="info-value">{user.phone or 'N/A'}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Country:</div>
+                        <div class="info-value">{user.country or 'N/A'}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Remaining Balance:</div>
+                        <div class="info-value" style="font-weight: 600;">${user.balance}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">KYC Status:</div>
+                        <div class="info-value">
+                            {'✅ Verified' if user.is_verified else ('⏳ Pending' if user.has_submitted_kyc else '❌ Not Submitted')}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <h3 style="margin-top: 0; color: #10b981;">💳 Payment Information</h3>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Method:</div>
+                        <div class="info-value">{payment_method_info}</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Address/Account:</div>
+                        <div class="info-value" style="font-size: 12px;">{payment_address}</div>
+                    </div>
+                    
+                    {f'''
+                    <div class="info-row">
+                        <div class="info-label">Bank Name:</div>
+                        <div class="info-value">{payment_method.bank_name}</div>
+                    </div>
+                    ''' if payment_method and payment_method.bank_name else ''}
+                </div>
+                
+                
+                
+                <p style="font-size: 14px; color: #666; text-align: center;">
+                    <span class="urgent">🚨 URGENT ACTION REQUIRED:</span> User is waiting for this withdrawal. Please process or contact user immediately.
+                </p>
+            </div>
+            
+            <div class="footer">
+                <p><strong>Citadel Markets Pro - Admin Notification</strong></p>
+                <p>This is an automated notification. Please do not reply to this email.</p>
+                <p style="margin-top: 20px; font-size: 12px; color: #999;">
+                    Sent: {timezone.now().strftime('%B %d, %Y at %I:%M %p UTC')}
+                </p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return send_email(admin_email, subject, html_content)
+
+
+
+
+
+

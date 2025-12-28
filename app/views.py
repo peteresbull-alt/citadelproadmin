@@ -87,15 +87,27 @@ from .models import (
     generate_unique_referral_code,
 )
 
+from .email_service import (
+    send_welcome_email,
+    send_admin_deposit_notification,
+    send_admin_withdrawal_notification,
+)
+
 from .permissions import IsEmailVerified
 
-# Logger makes error show in vercel
 import logging
+
+
+
+
+
+
 
 logger = logging.getLogger(__name__)
 
-
 User = get_user_model()
+
+
 
 
 
@@ -301,213 +313,10 @@ def validate_token(request):
         )
 
 
-from .email_service import send_welcome_email
-
-
-
-# Update the register_user function to handle referral codes
-# @api_view(["POST"])
-# @permission_classes([AllowAny])
-# def register_user(request):
-#     """
-#     Enhanced registration with referral tracking and country calling code
-#     """
-#     email = request.data.get("email")
-#     password = request.data.get("password")
-#     first_name = request.data.get("first_name", "")
-#     last_name = request.data.get("last_name", "")
-#     country = request.data.get("country", "")
-#     region = request.data.get("region", "")
-#     city = request.data.get("city", "")
-#     phone = request.data.get("phone", "")
-#     currency = request.data.get("currency", "")
-#     referral_code = request.data.get("referral_code", "").strip().upper()
-    
-#     # ADD THIS: Get country calling code
-#     country_calling_code = request.data.get("country_calling_code", "")
-
-#     if not email or not password:
-#         return Response(
-#             {"error": "Email and password are required"},
-#             status=status.HTTP_400_BAD_REQUEST,
-#         )
-
-#     if User.objects.filter(email=email).exists():
-#         return Response(
-#             {"error": "User with this email already exists"},
-#             status=status.HTTP_400_BAD_REQUEST,
-#         )
-
-#     # Run Django's password validators
-#     try:
-#         validate_password(password)
-#     except DjangoValidationError as e:
-#         return Response(
-#             {"error": e.messages},
-#             status=status.HTTP_400_BAD_REQUEST,
-#         )
-
-#     # Validate referral code if provided
-#     referrer = None
-#     if referral_code:
-#         try:
-#             referrer = User.objects.get(referral_code=referral_code)
-#         except User.DoesNotExist:
-#             return Response(
-#                 {"error": "Invalid referral code"},
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-
-#     # Create user
-#     user = User.objects.create_user(
-#         email=email,
-#         password=password,
-#         first_name=first_name,
-#         last_name=last_name,
-#         country=country,
-#         region=region,
-#         city=city,
-#         phone=phone,
-#         currency=currency,
-#         country_calling_code=country_calling_code,  # ADD THIS
-#         referred_by=referrer
-#     )
-
-#     token, _ = Token.objects.get_or_create(user=user)
-
-#     return Response(
-#         {
-#             "message": "User created successfully",
-#             "user": {
-#                 "id": user.id,
-#                 "email": user.email,
-#                 "first_name": user.first_name,
-#                 "last_name": user.last_name,
-#                 "referral_code": user.referral_code,
-#                 "country_calling_code": user.country_calling_code,  # ADD THIS
-#             },
-#             "token": token.key,
-#         },
-#         status=status.HTTP_201_CREATED,
-#     )
 
 
 
 
-# from .email_service import send_welcome_email
-
-# @api_view(["POST"])
-# @permission_classes([AllowAny])
-# def register_user(request):
-#     """
-#     Simple registration without email verification
-#     Users get immediate access after signup
-#     """
-#     email = request.data.get("email")
-#     password = request.data.get("password")
-#     first_name = request.data.get("first_name", "")
-#     last_name = request.data.get("last_name", "")
-#     country = request.data.get("country", "")
-#     region = request.data.get("region", "")
-#     city = request.data.get("city", "")
-#     phone = request.data.get("phone", "")
-#     currency = request.data.get("currency", "")
-#     referral_code = request.data.get("referral_code", "").strip().upper()
-#     country_calling_code = request.data.get("country_calling_code", "")
-
-#     if not email or not password:
-#         return Response(
-#             {"error": "Email and password are required"},
-#             status=status.HTTP_400_BAD_REQUEST,
-#         )
-
-#     if User.objects.filter(email=email).exists():
-#         return Response(
-#             {"error": "User with this email already exists"},
-#             status=status.HTTP_400_BAD_REQUEST,
-#         )
-
-#     try:
-#         validate_password(password)
-#     except DjangoValidationError as e:
-#         return Response(
-#             {"error": e.messages},
-#             status=status.HTTP_400_BAD_REQUEST,
-#         )
-
-#     referrer = None
-#     if referral_code:
-#         try:
-#             referrer = User.objects.get(referral_code=referral_code)
-#         except User.DoesNotExist:
-#             return Response(
-#                 {"error": "Invalid referral code"},
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-
-#     try:
-#         # ✅ Create user with email_verified=True
-#         user = User.objects.create_user(
-#             email=email,
-#             password=password,
-#             first_name=first_name,
-#             last_name=last_name,
-#             country=country,
-#             region=region,
-#             city=city,
-#             phone=phone,
-#             currency=currency,
-#             country_calling_code=country_calling_code,
-#             referred_by=referrer,
-#             email_verified=True,  # ✅ No verification needed
-#             is_active=True,
-#         )
-
-#         # ✅ Send welcome email in background (non-blocking)
-#         import threading
-        
-#         def send_welcome_async():
-#             try:
-#                 send_welcome_email(user)
-#                 logger.info(f"Welcome email sent to {user.email}")
-#             except Exception as e:
-#                 logger.error(f"Failed to send welcome email to {user.email}: {e}")
-        
-#         email_thread = threading.Thread(target=send_welcome_async)
-#         email_thread.daemon = True
-#         email_thread.start()
-
-#         # ✅ Create token immediately
-#         token, _ = Token.objects.get_or_create(user=user)
-
-#         return Response(
-#             {
-#                 "message": "Registration successful!",
-#                 "token": token.key,
-#                 "user": {
-#                     "id": user.id,
-#                     "email": user.email,
-#                     "first_name": user.first_name,
-#                     "last_name": user.last_name,
-#                     "email_verified": True,
-#                     "account_id": user.account_id,
-#                     "referral_code": user.referral_code,
-#                     "country_calling_code": user.country_calling_code,
-#                 },
-#             },
-#             status=status.HTTP_201_CREATED,
-#         )
-
-#     except Exception as e:
-#         logger.error(f"Registration failed: {str(e)}")
-#         return Response(
-#             {"error": f"Registration failed: {str(e)}"},
-#             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#         )
-
-
-
-from .email_service import send_welcome_email
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
@@ -1952,6 +1761,19 @@ def create_deposit_transaction(request):
             created_at=timezone.now(),
         )
 
+        # ✅ NEW: Send admin notification email
+        try:
+            email_sent = send_admin_deposit_notification(user, transaction)
+            
+            if email_sent:
+                logger.info(f"✅ Admin notified of deposit from {user.email}")
+            else:
+                logger.warning(f"⚠️ Failed to notify admin of deposit from {user.email}")
+        except Exception as e:
+            logger.error(f"❌ Admin deposit notification error: {str(e)}")
+            # Don't fail the transaction if email fails
+            pass
+
         return Response(
             {
                 "success": True,
@@ -2206,6 +2028,20 @@ def create_withdrawal_request(request):
         # NOTE: In production, you might want to hold this in a separate field until admin approval
         user.balance -= amount
         user.save()
+
+
+        # ✅ NEW: Send admin notification email
+        try:
+            email_sent = send_admin_withdrawal_notification(user, transaction, payment_method)
+            
+            if email_sent:
+                logger.info(f"✅ Admin notified of withdrawal from {user.email}")
+            else:
+                logger.warning(f"⚠️ Failed to notify admin of withdrawal from {user.email}")
+        except Exception as e:
+            logger.error(f"❌ Admin withdrawal notification error: {str(e)}")
+            # Don't fail the transaction if email fails
+            pass
         
         return Response(
             {
